@@ -52,35 +52,55 @@ public abstract class HandlerBase : IAsyncDisposable
         await AggregateOutputSink.DisposeAsync();
     }
 
-    protected IEnumerable<string> EnumerableFiles(string dir)
+    protected void CopyDir(string srcDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        foreach (var dir in Directory.GetDirectories(srcDir, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(destDir, Path.GetRelativePath(srcDir, dir)));
+        }
+
+        foreach (var file in Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories))
+        {
+            File.Copy(file, Path.Combine(destDir, Path.GetRelativePath(srcDir, file)), true);
+        }
+    }
+
+    protected IEnumerable<string> EnumerableFiles(string dir, bool applyFilter = false)
     {
         if (!Directory.Exists(dir))
         {
             return Enumerable.Empty<string>();
         }
 
-        var matcher = new Matcher();
-        if (_option.Includes.Length <= 0)
-        {
-            matcher.AddInclude("**");
-        }
-        else
-        {
-            foreach (var include in _option.Includes)
-            {
-                matcher.AddInclude(include);
-            }
-        }
-
-        foreach (var exclude in _option.Excludes)
-        {
-            matcher.AddExclude(exclude);
-        }
-
         var files = Directory.EnumerateFiles(dir, "*",
             _option.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
-        var matchResult = matcher.Match(dir, files);
-        return matchResult.Files.Select(x => x.Path);
+        if (applyFilter)
+        {
+            var matcher = new Matcher();
+            if (_option.Includes.Length <= 0)
+            {
+                matcher.AddInclude("**");
+            }
+            else
+            {
+                foreach (var include in _option.Includes)
+                {
+                    matcher.AddInclude(include);
+                }
+            }
+
+            foreach (var exclude in _option.Excludes)
+            {
+                matcher.AddExclude(exclude);
+            }
+
+
+            var matchResult = matcher.Match(dir, files);
+            return matchResult.Files.Select(x => x.Path);
+        }
+
+        return files.Select(x => Path.GetRelativePath(dir, x));
     }
 
     protected async Task CopyAsync(string srcFile, string destFile, Func<int, double, Task> progressChanged)
@@ -165,16 +185,41 @@ public abstract class HandlerBase : IAsyncDisposable
         return b1.SequenceEqual(b2);
     }
 
-    protected IEnumerable<string> EnumerableDirectories(string dir)
+    protected IEnumerable<string> EnumerableDirectories(string dir, bool applyFilter = false)
     {
         if (!Directory.Exists(dir))
         {
             return Enumerable.Empty<string>();
         }
 
-        return Directory
+        var dirs = Directory
             .EnumerateDirectories(dir, "*",
-                _option.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
+                _option.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+        if (applyFilter)
+        {
+            var matcher = new Matcher();
+            if (_option.Includes.Length <= 0)
+            {
+                matcher.AddInclude("**");
+            }
+            else
+            {
+                foreach (var include in _option.Includes)
+                {
+                    matcher.AddInclude(include);
+                }
+            }
+
+            foreach (var exclude in _option.Excludes)
+            {
+                matcher.AddExclude(exclude);
+            }
+
+            var matchResult = matcher.Match(dir, dirs);
+            return matchResult.Files.Select(x => x.Path);
+        }
+
+        return dirs
             .Select(x => Path.GetRelativePath(dir, x));
     }
 

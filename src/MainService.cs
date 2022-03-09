@@ -29,6 +29,9 @@ public class MainService
         var syncCmd = CreateSyncCommand();
         rootCommand.AddCommand(syncCmd);
 
+        var rmCmd = CreateRmCommand();
+        rootCommand.AddCommand(rmCmd);
+
         await rootCommand.InvokeAsync(_args);
     }
 
@@ -80,6 +83,110 @@ public class MainService
             await using var handler = new DffHandler(option, _cancellationToken);
             await handler.HandleAsync();
         }, includeOption, excludeOption, verboseOption, outputOption, recursiveOption, dirArg);
+
+        return cmd;
+    }
+
+    private Command CreateRmCommand()
+    {
+        var cmd = new Command("rm", "rm desc");
+        var includeOption = CreateIncludeOption();
+        cmd.AddOption(includeOption);
+
+        var excludeOption = CreateExcludeOption();
+        cmd.AddOption(excludeOption);
+
+        var outputOption = CreateOutputOption();
+        cmd.AddOption(outputOption);
+
+        var verboseOption = CreateVerboseOption();
+        cmd.AddOption(verboseOption);
+
+        var recursiveOption = CreateRecursiveOption();
+        cmd.AddOption(recursiveOption);
+
+        var backupOption = new Option<bool>(new[] {"-b", "--backup"}, "backup desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(backupOption);
+
+        var yesOption = new Option<bool>(new[] {"-y", "--yes"}, "yes desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(yesOption);
+
+        var fileOption = new Option<bool>(new[] {"-f", "--file"}, "file desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(fileOption);
+
+        var dirOption = new Option<bool>(new[] {"-d", "--dir"}, "dir desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(dirOption);
+
+        var emptyDirOption = new Option<bool>(new[] {"--empty-dir"}, "empty dir desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(emptyDirOption);
+
+        var fromFileOption = new Option<string>(new[] {"--from-file"}, "from file desc")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        cmd.AddOption(fromFileOption);
+
+        var destArg = new Argument<string>("dest", "dest desc")
+        {
+            Arity = ArgumentArity.ExactlyOne
+        };
+        cmd.AddArgument(destArg);
+
+        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
+                bool recursive, string dest, bool yes, bool backup, bool file, bool dir, bool emptyDir,
+                string fromFile) =>
+            {
+                if (string.IsNullOrEmpty(output))
+                {
+                    output = Path.GetTempPath();
+                }
+
+                Directory.CreateDirectory(output);
+
+                var option = new RmOption
+                {
+                    Destination = Path.GetFullPath(dest),
+                    Includes = includes,
+                    Excludes = excludes,
+                    OutputDir = output,
+                    EnableVerbose = enableVerbose,
+                    Recursive = recursive,
+                    RawArgs = string.Join(" ", _args),
+                    CmdName = "rm",
+                    Backup = backup,
+                    File = file,
+                    Dir = dir,
+                    EmptyDir = emptyDir,
+                    Yes = yes,
+                    FromFile = fromFile
+                };
+
+                await using var handler = new RmHandler(option, _cancellationToken);
+                await handler.HandleAsync();
+            }, includeOption, excludeOption, verboseOption, outputOption, recursiveOption, destArg, yesOption,
+            backupOption,
+            fileOption, dirOption, emptyDirOption, fromFileOption);
 
         return cmd;
     }

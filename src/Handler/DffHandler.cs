@@ -137,7 +137,7 @@ public class DffHandler : HandlerBase
         await AggregateOutputSink.LightLineAsync($"Scanning directory: {_option.Dir}", true);
         await AggregateOutputSink.NewLineAsync(true);
 
-        foreach (var file in EnumerableFiles(_option.Dir))
+        foreach (var file in EnumerableFiles(_option.Dir, true))
         {
             if (CancellationToken.IsCancellationRequested)
             {

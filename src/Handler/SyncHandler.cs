@@ -25,7 +25,7 @@ public class SyncHandler : HandlerBase
             await AggregateOutputSink.LightLineAsync($"Destination: {_option.DestDir}", true);
             await AggregateOutputSink.NewLineAsync(true);
 
-            foreach (var file in EnumerableFiles(_option.SrcDir))
+            foreach (var file in EnumerableFiles(_option.SrcDir, true))
             {
                 if (CancellationToken.IsCancellationRequested)
                 {
@@ -72,7 +72,7 @@ public class SyncHandler : HandlerBase
                     var stopwatch = Stopwatch.StartNew();
                     await CopyAsync(srcFile, destFile, async (p, s) =>
                     {
-                        var line = $" {Constants.SquareUnicode} {p}% ({s.Human()}/s)";
+                        var line = $"  {Constants.SquareUnicode} {p}% ({s.Human()}/s)";
                         await ConsoleSink.ClearLineAsync(true);
                         await ConsoleSink.InfoAsync(line, true);
                     }).OkForCancel();
@@ -178,7 +178,7 @@ public class SyncHandler : HandlerBase
                     }
                 }
 
-                foreach (var file in EnumerableFiles(_option.DestDir))
+                foreach (var file in EnumerableFiles(_option.DestDir, true))
                 {
                     if (CancellationToken.IsCancellationRequested)
                     {

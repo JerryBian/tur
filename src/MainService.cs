@@ -1,4 +1,5 @@
-﻿using System.CommandLine;
+﻿using System;
+using System.CommandLine;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ public class MainService
         _cancellationToken = cancellationToken;
     }
 
-    public async Task RunAsync()
+    public async Task<int> RunAsync()
     {
         var rootCommand = new RootCommand("Root desc");
         rootCommand.AddAlias("tur");
@@ -32,7 +33,7 @@ public class MainService
         var rmCmd = CreateRmCommand();
         rootCommand.AddCommand(rmCmd);
 
-        await rootCommand.InvokeAsync(_args);
+        return await rootCommand.InvokeAsync(_args);
     }
 
     private Command CreateDffCommand()
@@ -62,22 +63,15 @@ public class MainService
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
             bool recursive, string dir) =>
         {
-            if (string.IsNullOrEmpty(output))
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
-                output = Path.GetTempPath();
+                await Console.Error.WriteLineAsync($"Destination director does not exist: {dir}");
+                return;
             }
 
-            Directory.CreateDirectory(output);
-
-            var option = new DffOption
+            var option = new DffOption(output, includes, excludes, enableVerbose, recursive, _args)
             {
-                Dir = Path.GetFullPath(dir),
-                Includes = includes,
-                Excludes = excludes,
-                OutputDir = output, EnableVerbose = enableVerbose,
-                Recursive = recursive,
-                RawArgs = string.Join(" ", _args),
-                CmdName = "dff"
+                Dir = Path.GetFullPath(dir)
             };
 
             await using var handler = new DffHandler(option, _cancellationToken);
@@ -164,16 +158,9 @@ public class MainService
 
                 Directory.CreateDirectory(output);
 
-                var option = new RmOption
+                var option = new RmOption(output, includes, excludes, enableVerbose, recursive, _args)
                 {
                     Destination = Path.GetFullPath(dest),
-                    Includes = includes,
-                    Excludes = excludes,
-                    OutputDir = output,
-                    EnableVerbose = enableVerbose,
-                    Recursive = recursive,
-                    RawArgs = string.Join(" ", _args),
-                    CmdName = "rm",
                     Backup = backup,
                     File = file,
                     Dir = dir,
@@ -245,19 +232,12 @@ public class MainService
 
                 Directory.CreateDirectory(output);
 
-                var option = new SyncOption
+                var option = new SyncOption(output, includes, excludes, enableVerbose, recursive, _args)
                 {
                     Delete = delete,
                     DryRun = dryRun,
                     SrcDir = srcDir,
-                    DestDir = destDir,
-                    Includes = includes,
-                    Excludes = excludes,
-                    OutputDir = output,
-                    EnableVerbose = enableVerbose,
-                    Recursive = recursive,
-                    RawArgs = string.Join(" ", _args),
-                    CmdName = "sync"
+                    DestDir = destDir
                 };
 
                 await using var handler = new SyncHandler(option, _cancellationToken);

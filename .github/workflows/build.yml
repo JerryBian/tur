@@ -5,9 +5,53 @@ on:
     branches: [ master ]
 
 jobs:
+  build_test_windows:
+    name: Run build and test [Windows]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+          include-prerelease: false
+      - name: Run test
+        run: |
+          dotnet test test/ -v
+
+  build_test_mac:
+    name: Run build and test [macOS]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+          include-prerelease: false
+      - name: Run test
+        run: |
+          dotnet test test/ -v
+
+  build_test_linux:
+    name: Run build and test [Linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+          include-prerelease: false
+      - name: Run test
+        run: |
+          dotnet test test/ -v
+
+
   publish_release:
     name: Publish release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    needs: [build_test_mac, build_test_linux, build_test_windows]
     permissions:
       packages: write
       contents: write

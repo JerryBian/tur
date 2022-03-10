@@ -233,7 +233,7 @@ public abstract class HandlerBase : IAsyncDisposable
     {
         var sb = new StringBuilder();
         sb.AppendLine($"### Processed by tur {AppUtil.AppVersion}");
-        sb.AppendLine($"### Command: tur {_option.RawArgs}");
+        sb.AppendLine($"### Command: tur {string.Join(" ", _option.RawArgs)}");
         sb.AppendLine();
 
         await File.WriteAllTextAsync(_logFile, sb.ToString(), new UTF8Encoding(false), CancellationToken)

@@ -1,20 +1,47 @@
-﻿namespace Tur.Option;
+﻿using System;
+using System.IO;
+
+namespace Tur.Option;
 
 public abstract class OptionBase
 {
-    public string OutputDir { get; set; }
+    protected OptionBase(string outputDir, string[] includes, string[] excludes, bool enableVerbose, bool recursive,
+        string[] args, string cmd)
+    {
+        if (!string.IsNullOrEmpty(outputDir))
+        {
+            if (!Directory.Exists(outputDir))
+            {
+                throw new Exception($"Directory specified in -o/--output does not exist: {outputDir}");
+            }
 
-    public string[] Includes { get; set; }
+            OutputDir = Path.GetFullPath(outputDir);
+        }
+        else
+        {
+            OutputDir = Path.GetTempPath();
+        }
 
-    public string[] Excludes { get; set; }
+        Directory.CreateDirectory(OutputDir);
+        Includes = includes;
+        Excludes = excludes;
+        EnableVerbose = enableVerbose;
+        Recursive = recursive;
+        RawArgs = args;
+        CmdName = cmd;
+    }
 
-    public bool EnableVerbose { get; set; }
+    public string OutputDir { get; }
 
-    public bool Recursive { get; set; }
+    public string[] Includes { get; }
 
-    public string RawArgs { get; set; }
+    public string[] Excludes { get; }
 
-    public bool EmitResult { get; set; }
+    public bool EnableVerbose { get; }
 
-    public string CmdName { get; set; }
+    public bool Recursive { get; }
+
+    public string[] RawArgs { get; }
+
+    public string CmdName { get; }
 }

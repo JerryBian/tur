@@ -17,7 +17,7 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v
+          dotnet test test/ -v detailed
 
   build_test_mac:
     name: Run build and test [macOS]
@@ -31,7 +31,7 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v
+          dotnet test test/ -v detailed
 
   build_test_linux:
     name: Run build and test [Linux]
@@ -45,7 +45,7 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v
+          dotnet test test/ -v detailed
 
 
   publish_release:

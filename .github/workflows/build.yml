@@ -17,7 +17,7 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v detailed
+          dotnet test test/
 
   build_test_mac:
     name: Run build and test [macOS]
@@ -31,7 +31,7 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v detailed
+          dotnet test test/
 
   build_test_linux:
     name: Run build and test [Linux]
@@ -45,8 +45,37 @@ jobs:
           include-prerelease: false
       - name: Run test
         run: |
-          dotnet test test/ -v detailed
+          dotnet test test/
 
+  publish_nuget:
+    name: Publish NuGet package
+    runs-on: ubuntu-latest
+    needs: [build_test_mac, build_test_linux, build_test_windows]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y libxml2-utils zip unzip tar
+
+      - name: Setup environment variables
+        run: |
+          APP_VERSION=`xmllint --xpath "/Project/PropertyGroup/Version/text()" Directory.Build.props`
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+          include-prerelease: false
+
+      - name: publish-nuget
+        shell: pwsh
+        run: |
+          $env:NugetApiKey = "${{ secrets.NUGET_API_KEY }}"
+          ls
+          ./pack.ps1 ${{ env.APP_VERSION }}
 
   publish_release:
     name: Publish release
@@ -75,13 +104,6 @@ jobs:
           dotnet-version: '6.0.x'
           include-prerelease: false
 
-      - name: publish-nuget
-        shell: pwsh
-        run: |
-          $env:NugetApiKey = "${{ secrets.NUGET_API_KEY }}"
-          ls
-          ./pack.ps1 ${{ env.APP_VERSION }}
-
       - name: Publish Binaries
         run: |
           mkdir -p __ga
@@ -107,14 +129,14 @@ jobs:
           cd win-arm64 && sudo zip -r ../tur-win-arm64.zip * && cd ..
           cd osx-x64 && sudo zip -r ../tur-osx-x64.zip * && cd ..
       - uses: dev-drprasad/delete-tag-and-release@v0.2.0
-        name: Remove existing release for current version
+        name: Remove existing release for [${{ env.APP_VERSION }}]
         with:
           delete_release: true
           tag_name: ${{ env.APP_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: ncipollo/release-action@v1
-        name: publish release for current version
+        name: publish release for [${{ env.APP_VERSION }}]
         with:
           artifacts: "__ga/*.gz,__ga/*zip"
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -126,14 +148,14 @@ jobs:
           artifactErrorsFailBuild: true
           body: "Changes could be found at [CHANGELOG](https://github.com/JerryBian/tur/blob/master/CHANGELOG.md#${{ env.APP_VERSION_LINK }})."
       - uses: dev-drprasad/delete-tag-and-release@v0.2.0
-        name: Remove existing release for latest version
+        name: Remove existing release for [latest]
         with:
           delete_release: true
           tag_name: latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: ncipollo/release-action@v1
-        name: publish release for latest version
+        name: publish release for [latest]
         with:
           artifacts: "__ga/*.gz,__ga/*zip"
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,5 +1,9 @@
 Listed change logs for history.
 
+### 2.0.2
+
+Add environment dection test
+
 ### 2.0.1
 
 Fix unit tests

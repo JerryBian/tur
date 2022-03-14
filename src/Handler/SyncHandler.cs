@@ -91,6 +91,11 @@ public class SyncHandler : HandlerBase
                 var stopwatch = Stopwatch.StartNew();
                 await CopyAsync(srcFile, destFile, async (p, s) =>
                 {
+                    if (!AppUtil.HasMainWindow)
+                    {
+                        return;
+                    }
+
                     var line = $"[{FileUtil.GetSize(srcFileLength)}, {p}%, {s.Human()}/s]";
                     await ConsoleSink.ClearLineAsync(true);
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);

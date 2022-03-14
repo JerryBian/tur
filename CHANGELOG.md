@@ -1,5 +1,9 @@
 Listed change logs for history.
 
+### 2.0.0
+
+Introduce Unit Tests and fix issues
+
 ### 1.2.0
 
 - Init xUnit tests

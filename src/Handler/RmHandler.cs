@@ -17,289 +17,269 @@ public class RmHandler : HandlerBase
     public RmHandler(RmOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
         _option = option;
-        _backupDir = Path.Combine(_option.OutputDir, $"tur_{_option.CmdName}_{Path.GetRandomFileName()}");
+        _backupDir = Path.Combine(_option.OutputDir, $"tur-{_option.CmdName}-{Path.GetRandomFileName()}");
     }
 
-    protected override async Task HandleInternalAsync()
+    private async Task<List<ItemEntry>> GetFromFileListAsync()
     {
-        try
+        var result = new List<ItemEntry>();
+        if (!string.IsNullOrEmpty(_option.FromFile))
         {
-            var items = await GetItemsAsync();
-            if (items == null || !items.Any())
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Reading files in {_option.FromFile} ...", true);
+            if (!File.Exists(_option.FromFile))
             {
-                await AggregateOutputSink.WarnLineAsync("Nothing to delete.");
+                throw new Exception($"File not found for --from-file: {_option.FromFile}");
+            }
+
+            foreach (var item in await File.ReadAllLinesAsync(_option.FromFile, CancellationToken))
+            {
+                if (File.Exists(item))
+                {
+                    result.Add(new ItemEntry(Path.GetFullPath(item), null));
+                    continue;
+                }
+
+                if (Directory.Exists(item))
+                {
+                    result.Add(new ItemEntry(Path.GetFullPath(item), null, true));
+                }
+            }
+
+            await AggregateOutputSink.DefaultLineAsync(
+                "  Finished reading file in --from-file", true);
+            await AggregateOutputSink.NewLineAsync(true);
+        }
+
+        return result;
+    }
+
+    private async Task<List<ItemEntry>> GetFromFilterAsync()
+    {
+        var result = new List<ItemEntry>();
+
+        var filterFiles = _option.File || !_option.File && !_option.Dir;
+        if (filterFiles)
+        {
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Looking for files on deletion ...", true);
+            foreach (var file in EnumerableFiles(_option.Destination, true, true))
+            {
+                result.Add(new ItemEntry(file, Path.GetRelativePath(_option.Destination, file)));
+            }
+
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Finished the files lookup", true);
+            await AggregateOutputSink.NewLineAsync(true);
+        }
+
+        var filterDirs = _option.Dir || !_option.File && !_option.Dir;
+        if (filterDirs)
+        {
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Looking for directories on deletion ...", true);
+            foreach (var dir in EnumerableDirectories(_option.Destination, true, true))
+            {
+                result.Add(new ItemEntry(dir, Path.GetRelativePath(_option.Destination, dir), true));
+            }
+
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Finished the directories lookup.", true);
+            await AggregateOutputSink.NewLineAsync(true);
+        }
+
+        return result;
+    }
+
+    private async Task DeleteFilesAsync(List<ItemEntry> entries)
+    {
+        if (!entries.Any())
+        {
+            return;
+        }
+
+        await AggregateOutputSink.DefaultAsync(
+            $"{Constants.ArrowUnicode} Following [");
+        await AggregateOutputSink.InfoAsync(entries.Count.ToString());
+        await AggregateOutputSink.DefaultLineAsync("] files are on the deletion list ...");
+        foreach (var entry in entries)
+        {
+            await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
+        }
+
+        await AggregateOutputSink.NewLineAsync();
+        if (!_option.Yes)
+        {
+            await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
+            if (Console.ReadKey().Key != ConsoleKey.Y)
+            {
+                await ConsoleSink.NewLineAsync();
+                await ConsoleSink.WarnLineAsync("No file will be deleted.");
+                await ConsoleSink.NewLineAsync();
                 return;
             }
+        }
 
-            var fileItems = items.Where(x => !x.IsDir).ToList();
-            if (fileItems.Any())
+        await AggregateOutputSink.NewLineAsync();
+        await ConsoleSink.NewLineAsync();
+        await AggregateOutputSink.DefaultLineAsync(
+            $"{Constants.ArrowUnicode} Deletion started ...");
+        foreach (var entry in entries)
+        {
+            await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
+            if (File.Exists(entry.FullPath))
             {
-                await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-                await AggregateOutputSink.DefaultAsync("Below [");
-                await AggregateOutputSink.InfoAsync(fileItems.Count.ToString());
-                await AggregateOutputSink.DefaultLineAsync("] files are on the deletion list.");
-                foreach (var item in fileItems)
-                {
-                    await AggregateOutputSink.LightLineAsync(
-                        $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, item.FullPath)}");
-                }
+                File.Delete(entry.FullPath);
             }
 
-            var dirItems = items.Where(x => x.IsDir).ToList();
-            if (dirItems.Any())
+            await AggregateOutputSink.LightAsync("[");
+            await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+            await AggregateOutputSink.LightLineAsync("]");
+        }
+
+        await AggregateOutputSink.DefaultLineAsync(
+            "  Finished deletion on files");
+        await AggregateOutputSink.NewLineAsync();
+    }
+
+    private async Task DeleteDirsAsync(List<ItemEntry> entries)
+    {
+        if (!entries.Any())
+        {
+            return;
+        }
+
+        await AggregateOutputSink.DefaultAsync(
+            $"{Constants.ArrowUnicode} Following [");
+        await AggregateOutputSink.InfoAsync(entries.Count.ToString());
+        await AggregateOutputSink.DefaultLineAsync("] directories are on the deletion list ...");
+        foreach (var entry in entries)
+        {
+            await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
+        }
+
+        await AggregateOutputSink.NewLineAsync();
+        if (!_option.Yes)
+        {
+            await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
+            if (Console.ReadKey().Key != ConsoleKey.Y)
             {
-                await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-                await AggregateOutputSink.DefaultAsync("Below [");
-                await AggregateOutputSink.InfoAsync(dirItems.Count.ToString());
-                await AggregateOutputSink.DefaultLineAsync("] directories are on the deletion list.");
-                foreach (var item in dirItems)
-                {
-                    await AggregateOutputSink.LightLineAsync(
-                        $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, item.FullPath)}");
-                }
+                await ConsoleSink.NewLineAsync();
+                await ConsoleSink.WarnLineAsync("No directory will be deleted.");
+                await ConsoleSink.NewLineAsync();
+                return;
             }
+        }
+
+        await AggregateOutputSink.NewLineAsync();
+        await ConsoleSink.NewLineAsync();
+        await AggregateOutputSink.DefaultLineAsync(
+            $"{Constants.ArrowUnicode} Deletion started ...");
+
+        foreach (var entry in entries)
+        {
+            await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
+            if (Directory.Exists(entry.FullPath))
+            {
+                Directory.Delete(entry.FullPath, true);
+            }
+
+            await AggregateOutputSink.LightAsync("[");
+            await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+            await AggregateOutputSink.LightLineAsync("]");
+        }
+
+        await AggregateOutputSink.DefaultLineAsync(
+            "  Finished deletion on directories");
+        await AggregateOutputSink.NewLineAsync();
+    }
+
+    public async Task CleanupEmptyDirsAsync()
+    {
+        if (!_option.EmptyDir)
+        {
+            return;
+        }
+
+        await AggregateOutputSink.DefaultLineAsync($"{Constants.ArrowUnicode} Cleanup empty directories started ...");
+        var emptyDirs = EnumerableDirectories(_option.Destination, returnAbsolutePath: true)
+            .Where(x => !EnumerableFiles(x).Any()).ToList();
+        if (emptyDirs.Any())
+        {
+            await AggregateOutputSink.DefaultAsync("    Following [", true);
+            await AggregateOutputSink.InfoAsync(emptyDirs.Count.ToString());
+            await AggregateOutputSink.DefaultLineAsync("] empty directories are on the deletion list ...");
+            foreach (var emptyDir in emptyDirs)
+            {
+                await AggregateOutputSink.LightLineAsync(
+                    $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)}");
+            }
+
+            await AggregateOutputSink.NewLineAsync();
 
             if (!_option.Yes)
             {
-                await AggregateOutputSink.InfoAsync("Do you want to delete above items? Y/y or N/n: ");
-                var key = Console.ReadKey();
-                if (key.Key != ConsoleKey.Y)
+                await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
+                if (Console.ReadKey().Key != ConsoleKey.Y)
                 {
-                    await AggregateOutputSink.NewLineAsync();
-                    await AggregateOutputSink.DefaultLineAsync("User decided not to delete above items, exit ...");
+                    await ConsoleSink.NewLineAsync();
+                    await ConsoleSink.WarnLineAsync("No empty directory will be deleted.");
+                    await ConsoleSink.NewLineAsync();
                     return;
                 }
             }
-            else
-            {
-                await AggregateOutputSink.WarnLineAsync(
-                    "The -y/--yes option has been provided, delete will happen without confirmation.");
-            }
 
-            if (fileItems.Any())
-            {
-                await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-                await AggregateOutputSink.DefaultAsync("Deleting [");
-                await AggregateOutputSink.InfoAsync(fileItems.Count.ToString());
-                await AggregateOutputSink.DefaultAsync("] files.");
+            await AggregateOutputSink.NewLineAsync();
+            await ConsoleSink.NewLineAsync();
+            await AggregateOutputSink.DefaultLineAsync(
+                $"{Constants.ArrowUnicode} Deletion started ...");
 
-                foreach (var item in fileItems)
+            foreach (var emptyDir in emptyDirs)
+            {
+                await AggregateOutputSink.LightAsync(
+                    $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)} ");
+                if (Directory.Exists(emptyDir))
                 {
-                    await AggregateOutputSink.LightAsync(
-                        $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, item.FullPath)} ",
-                        true);
-                    if (File.Exists(item.FullPath))
-                    {
-                        if (_option.Backup)
-                        {
-                            var dir = Path.GetDirectoryName(item.FullPath);
-                            if (!string.IsNullOrEmpty(dir))
-                            {
-                                var backupDir = Path.Combine(_backupDir,
-                                    Path.GetRelativePath(_option.Destination, dir));
-                                Directory.CreateDirectory(backupDir);
-                                var backupFile = Path.GetFileName(item.FullPath);
-                                if (!string.IsNullOrEmpty(backupFile))
-                                {
-                                    File.Copy(item.FullPath, Path.Combine(backupDir, backupFile), true);
-                                }
-                            }
-                        }
-
-                        if (item.FullPath != null)
-                        {
-                            File.Delete(item.FullPath);
-                        }
-                    }
-
-                    await AggregateOutputSink.LightAsync("[", true);
-                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode, true);
-                    await AggregateOutputSink.LightLineAsync("]", true);
+                    Directory.Delete(emptyDir, true);
                 }
 
-                await AggregateOutputSink.DefaultAsync("  Files deleted.");
+                await AggregateOutputSink.LightAsync("[");
+                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+                await AggregateOutputSink.LightLineAsync("]");
             }
+        }
 
-            if (dirItems.Any())
-            {
-                await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-                await AggregateOutputSink.DefaultAsync("Deleting [");
-                await AggregateOutputSink.InfoAsync(dirItems.Count.ToString());
-                await AggregateOutputSink.DefaultAsync("] directories.");
+        // Delete root destination if empty
+        if (!EnumerableFiles(_option.Destination).Any())
+        {
+            Directory.Delete(_option.Destination, true);
+        }
 
-                foreach (var item in dirItems)
-                {
-                    await AggregateOutputSink.LightAsync(
-                        $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, item.FullPath)} ",
-                        true);
-                    if (Directory.Exists(item.FullPath))
-                    {
-                        if (_option.Backup)
-                        {
-                            var dir = Path.GetDirectoryName(item.FullPath);
-                            if (!string.IsNullOrEmpty(dir))
-                            {
-                                var backupDir = Path.Combine(_backupDir,
-                                    Path.GetRelativePath(_option.Destination, dir));
-                                Directory.CreateDirectory(backupDir);
-                                var backupFile = Path.GetFileName(item.FullPath);
-                                if (!string.IsNullOrEmpty(backupFile))
-                                {
-                                    CopyDir(item.FullPath, Path.Combine(backupDir, backupFile));
-                                }
-                            }
-                        }
+        await AggregateOutputSink.DefaultLineAsync("  Finished empty directory cleanup");
+        await AggregateOutputSink.NewLineAsync();
+    }
 
-                        if (item.FullPath != null)
-                        {
-                            Directory.Delete(item.FullPath, true);
-                        }
-                    }
+    protected override async Task<int> HandleInternalAsync()
+    {
+        try
+        {
+            var entries = await GetFromFileListAsync();
+            entries.AddRange(await GetFromFilterAsync());
 
-                    await AggregateOutputSink.LightAsync("[", true);
-                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode, true);
-                    await AggregateOutputSink.LightLineAsync("]", true);
-                }
+            var fileEntries = entries.Where(x => !x.IsDir).Distinct().ToList();
+            await DeleteFilesAsync(fileEntries);
 
-                await AggregateOutputSink.DefaultAsync("  Directories deleted.");
-            }
+            var dirEntries = entries.Where(x => x.IsDir).Distinct().ToList();
+            await DeleteDirsAsync(dirEntries);
 
-            if (_option.EmptyDir)
-            {
-                var emptyDirs = EnumerableDirectories(_backupDir).Where(x =>
-                    !Directory.EnumerateFiles(Path.Combine(_option.Destination, x)).Any()).ToList();
-
-                if (emptyDirs.Any())
-                {
-                    await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-                    await AggregateOutputSink.DefaultAsync("Deleting [");
-                    await AggregateOutputSink.InfoAsync(emptyDirs.Count.ToString());
-                    await AggregateOutputSink.DefaultAsync("] empty directories.");
-
-                    foreach (var item in emptyDirs)
-                    {
-                        await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {item} ");
-                        var fullPath = Path.Combine(_option.Destination, item);
-                        if (Directory.Exists(fullPath))
-                        {
-                            if (_option.Backup)
-                            {
-                                var dir = Path.GetDirectoryName(fullPath);
-                                if (!string.IsNullOrEmpty(dir))
-                                {
-                                    var backupDir = Path.Combine(_backupDir,
-                                        Path.GetRelativePath(_option.Destination, dir));
-                                    Directory.CreateDirectory(backupDir);
-                                }
-                            }
-
-                            Directory.Delete(fullPath, true);
-                        }
-
-                        await AggregateOutputSink.LightAsync("[", true);
-                        await AggregateOutputSink.ErrorAsync(Constants.XUnicode, true);
-                        await AggregateOutputSink.LightLineAsync("]", true);
-                    }
-
-                    await AggregateOutputSink.DefaultAsync("  Empty directories deleted.");
-                }
-            }
-
-            if (_option.Backup)
-            {
-                await AggregateOutputSink.LightLineAsync($"Backup folder at: {_backupDir}");
-            }
+            await CleanupEmptyDirsAsync();
         }
         catch (Exception ex)
         {
             await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
-        }
-    }
-
-    private async Task<List<ItemEntry>> GetItemsAsync()
-    {
-        var items = new HashSet<ItemEntry>();
-        if (!string.IsNullOrEmpty(_option.FromFile))
-        {
-            if (!File.Exists(_option.FromFile))
-            {
-                await AggregateOutputSink.ErrorLineAsync(
-                    $"The file specified by --from-file doesn't exist: {_option.FromFile}");
-                return null;
-            }
-
-            foreach (var file in await File.ReadAllLinesAsync(_option.FromFile, CancellationToken))
-            {
-                var path = Path.GetFullPath(file);
-                if (File.Exists(path))
-                {
-                    var entry = new ItemEntry(path);
-                    if (!items.Contains(entry))
-                    {
-                        items.Add(entry);
-                    }
-
-                    continue;
-                }
-
-                if (Directory.Exists(path))
-                {
-                    var entry = new ItemEntry(path);
-                    if (!items.Contains(entry))
-                    {
-                        items.Add(entry);
-                    }
-                }
-            }
+            return 0;
         }
 
-        var searchFiles = _option.File || !_option.File && !_option.Dir;
-        var searchDirs = _option.Dir || !_option.File && !_option.Dir;
-
-        if (searchDirs)
-        {
-            foreach (var dir in EnumerableDirectories(_option.Destination, true))
-            {
-                foreach (var file in Directory.GetFiles(Path.Combine(_option.Destination, dir), "*",
-                             SearchOption.AllDirectories))
-                {
-                    var entry = new ItemEntry(file);
-                    if (!items.Contains(entry))
-                    {
-                        items.Add(entry);
-                    }
-                }
-
-                foreach (var subDir in Directory.GetDirectories(Path.Combine(_option.Destination, dir), "*",
-                             SearchOption.AllDirectories))
-                {
-                    var entry = new ItemEntry(subDir, true);
-                    if (!items.Contains(entry))
-                    {
-                        items.Add(entry);
-                    }
-                }
-
-                var dirEntry = new ItemEntry(dir, true);
-                if (!items.Contains(dirEntry))
-                {
-                    items.Add(dirEntry);
-                }
-            }
-        }
-
-        if (searchFiles)
-        {
-            foreach (var file in EnumerableFiles(_option.Destination, true))
-            {
-                var entry = new ItemEntry(file);
-                if (!items.Contains(entry))
-                {
-                    items.Add(entry);
-                }
-            }
-        }
-
-        return items.ToList();
+        return 1;
     }
 }

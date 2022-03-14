@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Tur.Extension;
 
@@ -8,7 +9,7 @@ public static class TimeSpanExtension
     public static string Human(this TimeSpan timeSpan)
     {
         var result = new List<string>();
-        var str = string.Empty;
+        string str;
         if (timeSpan.Days > 0)
         {
             str = $"{timeSpan.Days} day";
@@ -34,7 +35,7 @@ public static class TimeSpanExtension
         if (timeSpan.Minutes > 0)
         {
             str = $"{timeSpan.Minutes} minute";
-            if (timeSpan.Days > 1)
+            if (timeSpan.Minutes > 1)
             {
                 str += "s";
             }
@@ -45,7 +46,7 @@ public static class TimeSpanExtension
         if (timeSpan.Seconds > 0)
         {
             str = $"{timeSpan.Seconds} second";
-            if (timeSpan.Days > 1)
+            if (timeSpan.Seconds > 1)
             {
                 str += "s";
             }
@@ -57,6 +58,11 @@ public static class TimeSpanExtension
         {
             str = $"{timeSpan.Milliseconds} ms";
             result.Add(str);
+        }
+
+        if (!result.Any())
+        {
+            return "less than 1 ms";
         }
 
         return string.Join(" ", result);

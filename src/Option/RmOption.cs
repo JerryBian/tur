@@ -2,12 +2,10 @@
 
 public class RmOption : OptionBase
 {
-    public RmOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose, bool recursive,
-        string[] args) : base(outputDir, includes, excludes, enableVerbose, recursive, args, "rm")
+    public RmOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose,
+        string[] args) : base(outputDir, includes, excludes, enableVerbose, args, "rm")
     {
     }
-
-    public bool Backup { get; set; }
 
     public bool Yes { get; set; }
 

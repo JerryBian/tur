@@ -2,8 +2,8 @@
 
 public class SyncOption : OptionBase
 {
-    public SyncOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose, bool recursive,
-        string[] args) : base(outputDir, includes, excludes, enableVerbose, recursive, args, "sync")
+    public SyncOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose,
+        string[] args) : base(outputDir, includes, excludes, enableVerbose, args, "sync")
     {
     }
 

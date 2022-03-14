@@ -31,7 +31,7 @@ public abstract class HandlerBase : IAsyncDisposable
         CancellationToken = cancellationToken;
 
         _logFile = Path.Combine(option.OutputDir,
-            $"tur_{option.CmdName}_{Path.GetRandomFileName().Replace(".", string.Empty)}.log");
+            $"tur-{option.CmdName}-{Path.GetRandomFileName().Replace(".", string.Empty)}.log");
 
         ConsoleSink = new ConsoleSink(_option);
         LogFileSink = new FileSink(_logFile, option);
@@ -45,10 +45,10 @@ public abstract class HandlerBase : IAsyncDisposable
     {
         if (CancellationToken.IsCancellationRequested)
         {
-            await AggregateOutputSink.WarnLineAsync("User requested to cancel ...");
+            await AggregateOutputSink.WarnLineAsync("  User requested to cancel ...");
         }
 
-        await ConsoleSink.LightLineAsync($"Log file can be found at {_logFile}");
+        await ConsoleSink.LightLineAsync($"{Constants.ArrowUnicode} Log file: {_logFile}");
         await AggregateOutputSink.DisposeAsync();
     }
 
@@ -66,19 +66,18 @@ public abstract class HandlerBase : IAsyncDisposable
         }
     }
 
-    protected IEnumerable<string> EnumerableFiles(string dir, bool applyFilter = false)
+    protected IEnumerable<string> EnumerableFiles(string dir, bool applyFilter = false, bool returnAbsolutePath = false)
     {
         if (!Directory.Exists(dir))
         {
             return Enumerable.Empty<string>();
         }
 
-        var files = Directory.EnumerateFiles(dir, "*",
-            _option.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+        var files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories);
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes.Length <= 0)
+            if (_option.Includes == null || _option.Includes.Length <= 0)
             {
                 matcher.AddInclude("**");
             }
@@ -90,14 +89,27 @@ public abstract class HandlerBase : IAsyncDisposable
                 }
             }
 
-            foreach (var exclude in _option.Excludes)
+            if (_option.Excludes != null)
             {
-                matcher.AddExclude(exclude);
+                foreach (var exclude in _option.Excludes)
+                {
+                    matcher.AddExclude(exclude);
+                }
             }
 
-
             var matchResult = matcher.Match(dir, files);
-            return matchResult.Files.Select(x => x.Path);
+            if (returnAbsolutePath)
+            {
+                return matchResult.Files.Select(x => Path.Combine(dir, x.Path));
+            }
+
+            return matchResult.Files.Select(x =>
+                Path.GetRelativePath(dir, Path.Combine(dir, x.Path))); // Matcher returns non cross platform separator
+        }
+
+        if (returnAbsolutePath)
+        {
+            return files;
         }
 
         return files.Select(x => Path.GetRelativePath(dir, x));
@@ -153,7 +165,7 @@ public abstract class HandlerBase : IAsyncDisposable
         var maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
         var iterations = (int) Math.Ceiling((double) fileInfo1.Length / maxBytesScan);
         await using var f1 = fileInfo1.OpenRead();
-        await using var f2 = fileInfo1.OpenRead();
+        await using var f2 = fileInfo2.OpenRead();
         var first = new byte[maxBytesScan];
         var second = new byte[maxBytesScan];
 
@@ -165,7 +177,7 @@ public abstract class HandlerBase : IAsyncDisposable
             }
 
             var firstBytes = await f1.ReadAsync(first, 0, maxBytesScan, CancellationToken);
-            var secondBytes = await f2.ReadAsync(first, 0, maxBytesScan, CancellationToken);
+            var secondBytes = await f2.ReadAsync(second, 0, maxBytesScan, CancellationToken);
             if (firstBytes != secondBytes)
             {
                 return false;
@@ -185,7 +197,8 @@ public abstract class HandlerBase : IAsyncDisposable
         return b1.SequenceEqual(b2);
     }
 
-    protected IEnumerable<string> EnumerableDirectories(string dir, bool applyFilter = false)
+    protected IEnumerable<string> EnumerableDirectories(string dir, bool applyFilter = false,
+        bool returnAbsolutePath = false)
     {
         if (!Directory.Exists(dir))
         {
@@ -193,12 +206,11 @@ public abstract class HandlerBase : IAsyncDisposable
         }
 
         var dirs = Directory
-            .EnumerateDirectories(dir, "*",
-                _option.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+            .EnumerateDirectories(dir, "*", SearchOption.AllDirectories);
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes.Length <= 0)
+            if (_option.Includes == null || _option.Includes.Length <= 0)
             {
                 matcher.AddInclude("**");
             }
@@ -210,23 +222,41 @@ public abstract class HandlerBase : IAsyncDisposable
                 }
             }
 
-            foreach (var exclude in _option.Excludes)
+            if (_option.Excludes != null)
             {
-                matcher.AddExclude(exclude);
+                foreach (var exclude in _option.Excludes)
+                {
+                    matcher.AddExclude(exclude);
+                }
             }
 
             var matchResult = matcher.Match(dir, dirs);
-            return matchResult.Files.Select(x => x.Path);
+            if (returnAbsolutePath)
+            {
+                return matchResult.Files.Select(x => Path.Combine(dir, x.Path));
+            }
+
+            return matchResult.Files.Select(x => Path.GetRelativePath(dir, Path.Combine(dir, x.Path)));
+        }
+
+        if (returnAbsolutePath)
+        {
+            return dirs;
         }
 
         return dirs
             .Select(x => Path.GetRelativePath(dir, x));
     }
 
-    public virtual async Task HandleAsync()
+    public virtual async Task<int> HandleAsync()
     {
         await WriteLogFileHeaderAsync();
-        await HandleInternalAsync();
+        var stopwatch = Stopwatch.StartNew();
+        var exitCode = await HandleInternalAsync();
+        stopwatch.Stop();
+        await AggregateOutputSink.DefaultLineAsync(
+            $"{Constants.ArrowUnicode} All done. Elapsed: [{stopwatch.Elapsed.Human()}]");
+        return exitCode;
     }
 
     private async Task WriteLogFileHeaderAsync()
@@ -240,5 +270,5 @@ public abstract class HandlerBase : IAsyncDisposable
             .OkForCancel();
     }
 
-    protected abstract Task HandleInternalAsync();
+    protected abstract Task<int> HandleInternalAsync();
 }

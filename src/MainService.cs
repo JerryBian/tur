@@ -51,9 +51,6 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var recursiveOption = CreateRecursiveOption();
-        cmd.AddOption(recursiveOption);
-
         var dirArg = new Argument<string>("dir", "dir desc")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -61,7 +58,7 @@ public class MainService
         cmd.AddArgument(dirArg);
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-            bool recursive, string dir) =>
+            string dir) =>
         {
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -69,14 +66,14 @@ public class MainService
                 return;
             }
 
-            var option = new DffOption(output, includes, excludes, enableVerbose, recursive, _args)
+            var option = new DffOption(output, includes, excludes, enableVerbose, _args)
             {
                 Dir = Path.GetFullPath(dir)
             };
 
             await using var handler = new DffHandler(option, _cancellationToken);
             await handler.HandleAsync();
-        }, includeOption, excludeOption, verboseOption, outputOption, recursiveOption, dirArg);
+        }, includeOption, excludeOption, verboseOption, outputOption, dirArg);
 
         return cmd;
     }
@@ -95,16 +92,6 @@ public class MainService
 
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
-
-        var recursiveOption = CreateRecursiveOption();
-        cmd.AddOption(recursiveOption);
-
-        var backupOption = new Option<bool>(new[] {"-b", "--backup"}, "backup desc")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
-        cmd.AddOption(backupOption);
 
         var yesOption = new Option<bool>(new[] {"-y", "--yes"}, "yes desc")
         {
@@ -148,7 +135,7 @@ public class MainService
         cmd.AddArgument(destArg);
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-                bool recursive, string dest, bool yes, bool backup, bool file, bool dir, bool emptyDir,
+                string dest, bool yes, bool file, bool dir, bool emptyDir,
                 string fromFile) =>
             {
                 if (string.IsNullOrEmpty(output))
@@ -158,10 +145,9 @@ public class MainService
 
                 Directory.CreateDirectory(output);
 
-                var option = new RmOption(output, includes, excludes, enableVerbose, recursive, _args)
+                var option = new RmOption(output, includes, excludes, enableVerbose, _args)
                 {
                     Destination = Path.GetFullPath(dest),
-                    Backup = backup,
                     File = file,
                     Dir = dir,
                     EmptyDir = emptyDir,
@@ -171,8 +157,7 @@ public class MainService
 
                 await using var handler = new RmHandler(option, _cancellationToken);
                 await handler.HandleAsync();
-            }, includeOption, excludeOption, verboseOption, outputOption, recursiveOption, destArg, yesOption,
-            backupOption,
+            }, includeOption, excludeOption, verboseOption, outputOption, destArg, yesOption,
             fileOption, dirOption, emptyDirOption, fromFileOption);
 
         return cmd;
@@ -192,9 +177,6 @@ public class MainService
 
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
-
-        var recursiveOption = CreateRecursiveOption();
-        cmd.AddOption(recursiveOption);
 
         var dryRunOption = new Option<bool>(new[] {"-n", "--dry-run"}, "dry run desc")
         {
@@ -222,8 +204,8 @@ public class MainService
         };
         cmd.AddArgument(destDirArg);
 
-        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-                bool recursive, bool delete, bool dryRun, string srcDir, string destDir) =>
+        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output, bool delete,
+                bool dryRun, string srcDir, string destDir) =>
             {
                 if (string.IsNullOrEmpty(output))
                 {
@@ -232,7 +214,7 @@ public class MainService
 
                 Directory.CreateDirectory(output);
 
-                var option = new SyncOption(output, includes, excludes, enableVerbose, recursive, _args)
+                var option = new SyncOption(output, includes, excludes, enableVerbose, _args)
                 {
                     Delete = delete,
                     DryRun = dryRun,
@@ -242,7 +224,7 @@ public class MainService
 
                 await using var handler = new SyncHandler(option, _cancellationToken);
                 await handler.HandleAsync();
-            }, includeOption, excludeOption, verboseOption, outputOption, recursiveOption, deleteOption, dryRunOption,
+            }, includeOption, excludeOption, verboseOption, outputOption, deleteOption, dryRunOption,
             srcDirArg, destDirArg);
 
         return cmd;
@@ -278,15 +260,6 @@ public class MainService
     private System.CommandLine.Option CreateVerboseOption()
     {
         return new Option<bool>(new[] {"-v", "--verbose"}, "verbose desc")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
-    }
-
-    private System.CommandLine.Option CreateRecursiveOption()
-    {
-        return new Option<bool>(new[] {"-r", "--recursive"}, "recursive desc")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

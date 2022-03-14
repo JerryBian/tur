@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Tur": {
+      "commandName": "Project",
+      "commandLineArgs": "sync C:\\temp2\\4 C:\\temp2\\"
+    }
+  }
+}

@@ -2,15 +2,28 @@
 
 public class ItemEntry
 {
-    public ItemEntry(string fullPath, bool isDir = false)
+    public ItemEntry(string fullPath, string relativePath, bool isDir = false)
     {
         IsDir = isDir;
         FullPath = fullPath;
+        RelativePath = relativePath;
     }
 
     public bool IsDir { get; }
 
+    public string RelativePath { get; }
+
     public string FullPath { get; }
+
+    public string GetDisplayPath()
+    {
+        if (!string.IsNullOrEmpty(RelativePath))
+        {
+            return RelativePath;
+        }
+
+        return FullPath;
+    }
 
     public override bool Equals(object obj)
     {

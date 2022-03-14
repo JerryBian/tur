@@ -5,7 +5,7 @@ namespace Tur.Option;
 
 public abstract class OptionBase
 {
-    protected OptionBase(string outputDir, string[] includes, string[] excludes, bool enableVerbose, bool recursive,
+    protected OptionBase(string outputDir, string[] includes, string[] excludes, bool enableVerbose,
         string[] args, string cmd)
     {
         if (!string.IsNullOrEmpty(outputDir))
@@ -26,22 +26,19 @@ public abstract class OptionBase
         Includes = includes;
         Excludes = excludes;
         EnableVerbose = enableVerbose;
-        Recursive = recursive;
         RawArgs = args;
         CmdName = cmd;
     }
 
-    public string OutputDir { get; }
+    public string OutputDir { get; set; }
 
-    public string[] Includes { get; }
+    public string[] Includes { get; set; }
 
-    public string[] Excludes { get; }
+    public string[] Excludes { get; set; }
 
-    public bool EnableVerbose { get; }
+    public bool EnableVerbose { get; set; }
 
-    public bool Recursive { get; }
-
-    public string[] RawArgs { get; }
+    public string[] RawArgs { get; set; }
 
     public string CmdName { get; }
 }

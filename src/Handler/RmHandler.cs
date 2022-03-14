@@ -11,13 +11,11 @@ namespace Tur.Handler;
 
 public class RmHandler : HandlerBase
 {
-    private readonly string _backupDir;
     private readonly RmOption _option;
 
     public RmHandler(RmOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
         _option = option;
-        _backupDir = Path.Combine(_option.OutputDir, $"tur-{_option.CmdName}-{Path.GetRandomFileName()}");
     }
 
     private async Task<List<ItemEntry>> GetFromFileListAsync()

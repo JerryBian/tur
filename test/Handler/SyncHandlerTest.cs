@@ -118,4 +118,31 @@ public class SyncHandlerTest : TestBase
             Directory.GetDirectories(_destDir, "*", SearchOption.AllDirectories).Length);
         Assert.Single(Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories));
     }
+
+    [Fact]
+    public async Task Test_Case_5()
+    {
+        var dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
+        await MockFileAsync(dirTree.SubDirTrees[0].FullPath, fileName: "1.go");
+        await MockFileAsync(dirTree.SubDirTrees[0].SubDirTrees[2].FullPath, fileName: "2.js");
+        MockSubDir(Path.Combine(_destDir, "__1", "__2"));
+        await MockFileAsync(Path.Combine(_destDir, "1_2"));
+        await MockFileAsync(Path.Combine(_destDir, "3_4"));
+
+        var option = new SyncOption(null, new[] {"**/*.go"}, new[] {"**/*.js"}, false, Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir,
+            Delete = true,
+            DryRun = true
+        };
+
+        await using var handler = new SyncHandler(option, CancellationToken.None);
+        await handler.HandleAsync();
+
+        Assert.True(Directory.Exists(_destDir));
+        Assert.Equal(5,
+            Directory.GetDirectories(_destDir, "*", SearchOption.AllDirectories).Length);
+        Assert.Equal(2, Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories).Length);
+    }
 }

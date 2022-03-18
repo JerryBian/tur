@@ -21,7 +21,7 @@ public class MainService
 
     public async Task<int> RunAsync()
     {
-        var rootCommand = new RootCommand("Root desc");
+        var rootCommand = new RootCommand("Command line tool to manage files.");
         rootCommand.AddAlias("tur");
 
         var dffCmd = CreateDffCommand();
@@ -38,7 +38,7 @@ public class MainService
 
     private Command CreateDffCommand()
     {
-        var cmd = new Command("dff", "dff desc");
+        var cmd = new Command("dff", "Duplicate files finder.");
         var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
@@ -51,7 +51,7 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var dirArg = new Argument<string>("dir", "dir desc")
+        var dirArg = new Argument<string>("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
@@ -80,7 +80,7 @@ public class MainService
 
     private Command CreateRmCommand()
     {
-        var cmd = new Command("rm", "rm desc");
+        var cmd = new Command("rm", "Remove files or directories.");
         var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
@@ -93,42 +93,43 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var yesOption = new Option<bool>(new[] {"-y", "--yes"}, "yes desc")
+        var yesOption = new Option<bool>(new[] {"-y", "--yes"}, "Perform deletion without confirmation.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(yesOption);
 
-        var fileOption = new Option<bool>(new[] {"-f", "--file"}, "file desc")
+        var fileOption = new Option<bool>(new[] {"-f", "--file"}, "Delete files only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(fileOption);
 
-        var dirOption = new Option<bool>(new[] {"-d", "--dir"}, "dir desc")
+        var dirOption = new Option<bool>(new[] {"-d", "--dir"}, "Delete directories only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(dirOption);
 
-        var emptyDirOption = new Option<bool>(new[] {"--empty-dir"}, "empty dir desc")
+        var emptyDirOption = new Option<bool>(new[] {"--empty-dir"}, "Delete all empty directories.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(emptyDirOption);
 
-        var fromFileOption = new Option<string>(new[] {"--from-file"}, "from file desc")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
+        var fromFileOption =
+            new Option<string>(new[] {"--from-file"}, "Delete all files/directories listed in specified file.")
+            {
+                IsRequired = false,
+                Arity = ArgumentArity.ZeroOrOne
+            };
         cmd.AddOption(fromFileOption);
 
-        var destArg = new Argument<string>("dest", "dest desc")
+        var destArg = new Argument<string>("dest", "The destination directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
@@ -165,7 +166,7 @@ public class MainService
 
     private Command CreateSyncCommand()
     {
-        var cmd = new Command("sync", "sync desc");
+        var cmd = new Command("sync", "Synchronize files from source to destination directory.");
         var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
@@ -178,27 +179,28 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var dryRunOption = new Option<bool>(new[] {"-n", "--dry-run"}, "dry run desc")
+        var dryRunOption = new Option<bool>(new[] {"-n", "--dry-run"}, "Perform a trial run with no changes made.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(dryRunOption);
 
-        var deleteOption = new Option<bool>(new[] {"-d", "--delete"}, "delete desc")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
+        var deleteOption =
+            new Option<bool>(new[] {"-d", "--delete"}, "Delete extraneous files from destination directory.")
+            {
+                IsRequired = false,
+                Arity = ArgumentArity.ZeroOrOne
+            };
         cmd.AddOption(deleteOption);
 
-        var srcDirArg = new Argument<string>("src", "src desc")
+        var srcDirArg = new Argument<string>("src", "The source directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
         cmd.AddArgument(srcDirArg);
 
-        var destDirArg = new Argument<string>("dest", "dest desc")
+        var destDirArg = new Argument<string>("dest", "The Destination directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
@@ -232,7 +234,8 @@ public class MainService
 
     private System.CommandLine.Option CreateOutputOption()
     {
-        return new Option<string>(new[] {"-o", "--output"}, "output desc")
+        return new Option<string>(new[] {"-o", "--output"},
+            "The output directory for logs or any file generated during processing.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -241,7 +244,7 @@ public class MainService
 
     private System.CommandLine.Option CreateIncludeOption()
     {
-        return new Option<string[]>(new[] {"-i", "--include"}, "include desc")
+        return new Option<string[]>(new[] {"-i", "--include"}, "Glob patterns for included files.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrMore
@@ -250,7 +253,7 @@ public class MainService
 
     private System.CommandLine.Option CreateExcludeOption()
     {
-        return new Option<string[]>(new[] {"-e", "--exclude"}, "exclude desc")
+        return new Option<string[]>(new[] {"-e", "--exclude"}, "Glob patterns for excluded files.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -259,7 +262,7 @@ public class MainService
 
     private System.CommandLine.Option CreateVerboseOption()
     {
-        return new Option<bool>(new[] {"-v", "--verbose"}, "verbose desc")
+        return new Option<bool>(new[] {"-v", "--verbose"}, "Display detailed logs.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

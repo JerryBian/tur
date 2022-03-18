@@ -1,5 +1,10 @@
 Listed change logs for history.
 
+### 3.0.0
+
+- More code coverage and tests
+- Help Documentation
+
 ### 2.0.2
 
 Add environment dection test

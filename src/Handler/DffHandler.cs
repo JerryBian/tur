@@ -22,7 +22,7 @@ public class DffHandler : HandlerBase
     {
         _option = option;
         _exportedDupFile = Path.Combine(option.OutputDir,
-            $"tur-{option.CmdName}-{Path.GetRandomFileName().Replace(".", string.Empty)}.txt");
+            $"tur-{option.CmdName}-{GetRandomFile()}.txt");
         _exportedDupFileSink = new FileSink(_exportedDupFile, option);
     }
 
@@ -69,7 +69,7 @@ public class DffHandler : HandlerBase
         await AggregateOutputSink.DefaultAsync("Working on group ");
         await AggregateOutputSink.InfoAsync(currentGroup.ToString());
         await AggregateOutputSink.DefaultAsync(" [");
-        await AggregateOutputSink.InfoAsync(FileUtil.GetSize(group.Key));
+        await AggregateOutputSink.InfoAsync(HumanUtil.GetSize(group.Key));
         await AggregateOutputSink.DefaultAsync("], it contains ");
         await AggregateOutputSink.InfoAsync($"{group.Value.Count}");
         await AggregateOutputSink.DefaultLineAsync(" files.");
@@ -155,7 +155,7 @@ public class DffHandler : HandlerBase
         await AggregateOutputSink.LightLineAsync($"{Constants.ArrowUnicode} Scanning directory: {_option.Dir}", true);
         await AggregateOutputSink.NewLineAsync(true);
 
-        foreach (var file in EnumerableFiles(_option.Dir, true))
+        foreach (var file in EnumerateFiles(_option.Dir, true))
         {
             if (CancellationToken.IsCancellationRequested)
             {
@@ -172,7 +172,7 @@ public class DffHandler : HandlerBase
             groupedItems[fileSize].Add(file);
         }
 
-        groupedItems = groupedItems.Where(x => x.Value.Count() > 1).ToDictionary(x => x.Key, x => x.Value);
+        groupedItems = groupedItems.Where(x => x.Value.Count > 1).ToDictionary(x => x.Key, x => x.Value);
         return groupedItems;
     }
 

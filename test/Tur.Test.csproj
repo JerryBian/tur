@@ -24,8 +24,4 @@
     <ProjectReference Include="..\src\Tur.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Util\" />
-  </ItemGroup>
-
 </Project>

@@ -2,7 +2,7 @@
 
 namespace Tur.Util;
 
-public static class FileUtil
+public static class HumanUtil
 {
     public static string GetSize(long length)
     {

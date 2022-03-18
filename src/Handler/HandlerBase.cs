@@ -31,7 +31,7 @@ public abstract class HandlerBase : IAsyncDisposable
         CancellationToken = cancellationToken;
 
         _logFile = Path.Combine(option.OutputDir,
-            $"tur-{option.CmdName}-{Path.GetRandomFileName().Replace(".", string.Empty)}.log");
+            $"tur-{option.CmdName}-{GetRandomFile()}.log");
 
         ConsoleSink = new ConsoleSink(_option);
         LogFileSink = new FileSink(_logFile, option);
@@ -52,21 +52,12 @@ public abstract class HandlerBase : IAsyncDisposable
         await AggregateOutputSink.DisposeAsync();
     }
 
-    protected void CopyDir(string srcDir, string destDir)
+    protected string GetRandomFile()
     {
-        Directory.CreateDirectory(destDir);
-        foreach (var dir in Directory.GetDirectories(srcDir, "*", SearchOption.AllDirectories))
-        {
-            Directory.CreateDirectory(Path.Combine(destDir, Path.GetRelativePath(srcDir, dir)));
-        }
-
-        foreach (var file in Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories))
-        {
-            File.Copy(file, Path.Combine(destDir, Path.GetRelativePath(srcDir, file)), true);
-        }
+        return Path.GetRandomFileName().Replace(".", string.Empty);
     }
 
-    protected IEnumerable<string> EnumerableFiles(string dir, bool applyFilter = false, bool returnAbsolutePath = false)
+    protected IEnumerable<string> EnumerateFiles(string dir, bool applyFilter = false, bool returnAbsolutePath = false)
     {
         if (!Directory.Exists(dir))
         {
@@ -77,7 +68,7 @@ public abstract class HandlerBase : IAsyncDisposable
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes == null || _option.Includes.Length <= 0)
+            if (_option.Includes is not {Length: > 0})
             {
                 matcher.AddInclude("**");
             }
@@ -143,7 +134,7 @@ public abstract class HandlerBase : IAsyncDisposable
             stopwatch.Stop();
             bytesWritten += currentBlockSize;
             await progressChanged(Convert.ToInt32(bytesWritten / (double) srcFileLength * 100),
-                (double) currentBlockSize / 2 / stopwatch.Elapsed.TotalSeconds);
+                (double) currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
             stopwatch.Restart();
         }
     }
@@ -176,8 +167,8 @@ public abstract class HandlerBase : IAsyncDisposable
                 return false;
             }
 
-            var firstBytes = await f1.ReadAsync(first, 0, maxBytesScan, CancellationToken);
-            var secondBytes = await f2.ReadAsync(second, 0, maxBytesScan, CancellationToken);
+            var firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken);
+            var secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken);
             if (firstBytes != secondBytes)
             {
                 return false;
@@ -197,7 +188,7 @@ public abstract class HandlerBase : IAsyncDisposable
         return b1.SequenceEqual(b2);
     }
 
-    protected IEnumerable<string> EnumerableDirectories(string dir, bool applyFilter = false,
+    protected IEnumerable<string> EnumerateDirectories(string dir, bool applyFilter = false,
         bool returnAbsolutePath = false)
     {
         if (!Directory.Exists(dir))
@@ -210,7 +201,7 @@ public abstract class HandlerBase : IAsyncDisposable
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes == null || _option.Includes.Length <= 0)
+            if (_option.Includes is not {Length: > 0})
             {
                 matcher.AddInclude("**");
             }

@@ -61,7 +61,7 @@ public class RmHandler : HandlerBase
         {
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Looking for files on deletion ...", true);
-            foreach (var file in EnumerableFiles(_option.Destination, true, true))
+            foreach (var file in EnumerateFiles(_option.Destination, true, true))
             {
                 result.Add(new ItemEntry(file, Path.GetRelativePath(_option.Destination, file)));
             }
@@ -76,7 +76,7 @@ public class RmHandler : HandlerBase
         {
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Looking for directories on deletion ...", true);
-            foreach (var dir in EnumerableDirectories(_option.Destination, true, true))
+            foreach (var dir in EnumerateDirectories(_option.Destination, true, true))
             {
                 result.Add(new ItemEntry(dir, Path.GetRelativePath(_option.Destination, dir), true));
             }
@@ -200,8 +200,8 @@ public class RmHandler : HandlerBase
         }
 
         await AggregateOutputSink.DefaultLineAsync($"{Constants.ArrowUnicode} Cleanup empty directories started ...");
-        var emptyDirs = EnumerableDirectories(_option.Destination, returnAbsolutePath: true)
-            .Where(x => !EnumerableFiles(x).Any()).ToList();
+        var emptyDirs = EnumerateDirectories(_option.Destination, returnAbsolutePath: true)
+            .Where(x => !EnumerateFiles(x).Any()).ToList();
         if (emptyDirs.Any())
         {
             await AggregateOutputSink.DefaultAsync("    Following [", true);
@@ -248,7 +248,7 @@ public class RmHandler : HandlerBase
         }
 
         // Delete root destination if empty
-        if (!EnumerableFiles(_option.Destination).Any())
+        if (!EnumerateFiles(_option.Destination).Any())
         {
             Directory.Delete(_option.Destination, true);
         }

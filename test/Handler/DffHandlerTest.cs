@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Tur.Handler;
@@ -65,6 +66,16 @@ public class DffHandlerTest : TestBase
         Assert.Equal(2, _option.ExportedList[0].Count);
         Assert.Contains(Path.Combine(_dir, folder1, file1), _option.ExportedList[0]);
         Assert.Contains(Path.Combine(_dir, file2), _option.ExportedList[0]);
+    }
+
+    [Fact]
+    public async Task Test_Case_4()
+    {
+        _option.Dir = Path.GetRandomFileName();
+        await using var handler = new DffHandler(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+        Assert.Equal(1, exitCode);
+        Assert.False(Directory.GetFiles(_dir, "*.txt").Any());
     }
 
     public override void Dispose()

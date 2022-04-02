@@ -1,16 +1,16 @@
-﻿using ByteSizeLib;
+﻿using Humanizer;
 
 namespace Tur.Extension;
 
 public static class NumberExtension
 {
-    public static string Human(this double val)
+    public static string SizeHuman(this double val)
     {
-        return ByteSize.FromBytes(val).ToString("#.#");
+        return val.Bytes().ToString("#.#");
     }
 
-    public static string Human(this long val)
+    public static string SizeHuman(this long val)
     {
-        return ByteSize.FromBytes(val).ToString("#.#");
+        return val.Bytes().ToString("#.#");
     }
 }

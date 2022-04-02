@@ -95,7 +95,7 @@ public class SyncHandler : HandlerBase
                         return;
                     }
 
-                    var line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.Human()}/s]";
+                    var line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s]";
                     await ConsoleSink.ClearLineAsync(true);
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                     await ConsoleSink.InfoAsync(line, true);

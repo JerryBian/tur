@@ -1,4 +1,8 @@
-Listed change logs for history.
+Listed change logs for release history.
+
+### 3.1.0
+
+Enhance README
 
 ### 3.0.0
 

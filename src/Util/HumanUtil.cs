@@ -11,7 +11,7 @@ public static class HumanUtil
             return "0 b";
         }
 
-        return length.Human();
+        return length.SizeHuman();
     }
 
     public static string GetRatesPerSecond(long length, double seconds)
@@ -21,6 +21,6 @@ public static class HumanUtil
             return "-";
         }
 
-        return (length / seconds).Human() + "/s";
+        return (length / seconds).SizeHuman() + "/s";
     }
 }

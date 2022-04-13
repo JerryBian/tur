@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 3.2.0
+
+Add `--size-only` option for `sync` subcommand.
+
 ### 3.1.0
 
 Enhance README

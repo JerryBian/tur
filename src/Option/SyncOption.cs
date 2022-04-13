@@ -14,4 +14,6 @@ public class SyncOption : OptionBase
     public string SrcDir { get; set; }
 
     public string DestDir { get; set; }
+
+    public bool SizeOnly { get; set; }
 }

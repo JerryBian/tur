@@ -194,6 +194,14 @@ public class MainService
             };
         cmd.AddOption(deleteOption);
 
+        var sizeOnlyOption =
+            new Option<bool>(new[] {"--size-only"}, "Skip files that match in both name and size.")
+            {
+                IsRequired = false,
+                Arity = ArgumentArity.ZeroOrOne
+            };
+        cmd.AddOption(sizeOnlyOption);
+
         var srcDirArg = new Argument<string>("src", "The source directory.")
         {
             Arity = ArgumentArity.ExactlyOne

@@ -4,13 +4,13 @@
 
 Command line tool to manage files.
 
-_This is develped only for my personal daily usage purpose, it's not intended to fit all requirements for everyone, use it at your own risk._
+_This is developed only for my personal daily usage purpose, it's not intended to fit all requirements for everyone, use it at your own risk._
 
 ## Installation
 
 ### Recommend
 
-Install via NuGet package.
+Install via NuGet [package](https://www.nuget.org/packages/tur/).
 
 ```sh
 dotnet tool install -g tur
@@ -25,9 +25,9 @@ Go to [Release page](https://github.com/JerryBian/tur/releases/tag/latest), down
 ## Usage
 
 At this moment, `tur` supports thress subcommands:
-- [`dff`](./#dff)
-- [`sync`](./#sync)
-- [`rm`](./#rm)
+- [`dff`](#dff)
+- [`sync`](#sync)
+- [`rm`](#rm)
 
 In general the syntax likes:
 
@@ -77,6 +77,7 @@ Options:
   -v, --verbose            Display detailed logs.
   -n, --dry-run            Perform a trial run with no changes made.
   -d, --delete             Delete extraneous files from destination directory.
+  --size-only              Skip files that match in both name and size.
   -?, -h, --help           Show help and usage information
 ```
 

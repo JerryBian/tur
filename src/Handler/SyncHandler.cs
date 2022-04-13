@@ -74,12 +74,20 @@ public class SyncHandler : HandlerBase
 
             var srcFile = Path.Combine(_option.SrcDir, relativeSrcFile);
             var destFile = Path.Combine(_option.DestDir, relativeSrcFile);
-            if (File.Exists(destFile) && await IsSameFileAsync(srcFile, destFile))
+            var srcFileLength = new FileInfo(srcFile).Length;
+            if (File.Exists(destFile))
             {
-                continue;
+                if (_option.SizeOnly && srcFileLength == new FileInfo(destFile).Length)
+                {
+                    continue;
+                }
+
+                if (await IsSameFileAsync(srcFile, destFile))
+                {
+                    continue;
+                }
             }
 
-            var srcFileLength = new FileInfo(srcFile).Length;
             await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
             if (_option.DryRun)
             {

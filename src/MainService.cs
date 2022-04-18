@@ -215,7 +215,7 @@ public class MainService
         cmd.AddArgument(destDirArg);
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output, bool delete,
-                bool dryRun, string srcDir, string destDir) =>
+                bool dryRun, bool sizeOnly, string srcDir, string destDir) =>
             {
                 if (string.IsNullOrEmpty(output))
                 {
@@ -229,12 +229,13 @@ public class MainService
                     Delete = delete,
                     DryRun = dryRun,
                     SrcDir = srcDir,
-                    DestDir = destDir
+                    DestDir = destDir,
+                    SizeOnly = sizeOnly
                 };
 
                 await using var handler = new SyncHandler(option, _cancellationToken);
                 await handler.HandleAsync();
-            }, includeOption, excludeOption, verboseOption, outputOption, deleteOption, dryRunOption,
+            }, includeOption, excludeOption, verboseOption, outputOption, deleteOption, dryRunOption, sizeOnlyOption,
             srcDirArg, destDirArg);
 
         return cmd;

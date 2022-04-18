@@ -87,7 +87,7 @@ public abstract class HandlerBase : IAsyncDisposable
                     matcher.AddExclude(exclude);
                 }
             }
-
+            
             var matchResult = matcher.Match(dir, files);
             if (returnAbsolutePath)
             {

@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 3.2.1
+
+Fix `--size-only` option not work issue.
+
 ### 3.2.0
 
 Add `--size-only` option for `sync` subcommand.

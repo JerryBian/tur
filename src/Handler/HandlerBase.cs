@@ -68,7 +68,7 @@ public abstract class HandlerBase : IAsyncDisposable
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes is not {Length: > 0})
+            if (_option.Includes is not { Length: > 0 })
             {
                 matcher.AddInclude("**");
             }
@@ -87,14 +87,33 @@ public abstract class HandlerBase : IAsyncDisposable
                     matcher.AddExclude(exclude);
                 }
             }
-            
+
             var matchResult = matcher.Match(dir, files);
-            if (returnAbsolutePath)
+
+            var matchFiles = matchResult.Files;
+
+            if (_option.MinModifyTimeSpam != 0 || _option.MaxModifyTimeSpam != 0)
             {
-                return matchResult.Files.Select(x => Path.Combine(dir, x.Path));
+                var minDate = _option.MinModifyTimeSpam == 0 ? DateTime.MinValue : _option.MinModifyTimeSpam.ToDateTime();
+                var maxDate = _option.MaxModifyTimeSpam == 0 ? DateTime.MaxValue : _option.MaxModifyTimeSpam.ToDateTime();
+                matchFiles = matchFiles.Where((f) =>
+                {
+                    var fileInfo = new FileInfo(Path.Combine(dir, f.Path));
+                    if (!fileInfo.Exists)
+                    {
+                        return false;
+                    }
+
+                    return fileInfo.LastWriteTime >= minDate && fileInfo.LastWriteTime <= maxDate;
+                });
             }
 
-            return matchResult.Files.Select(x =>
+            if (returnAbsolutePath)
+            {
+                return matchFiles.Select(x => Path.Combine(dir, x.Path));
+            }
+
+            return matchFiles.Select(x =>
                 Path.GetRelativePath(dir, Path.Combine(dir, x.Path))); // Matcher returns non cross platform separator
         }
 
@@ -133,8 +152,8 @@ public abstract class HandlerBase : IAsyncDisposable
             await dest.WriteAsync(buffer, 0, currentBlockSize, CancellationToken);
             stopwatch.Stop();
             bytesWritten += currentBlockSize;
-            await progressChanged(Convert.ToInt32(bytesWritten / (double) srcFileLength * 100),
-                (double) currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
+            await progressChanged(Convert.ToInt32(bytesWritten / (double)srcFileLength * 100),
+                (double)currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
             stopwatch.Restart();
         }
     }
@@ -154,7 +173,7 @@ public abstract class HandlerBase : IAsyncDisposable
         }
 
         var maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
-        var iterations = (int) Math.Ceiling((double) fileInfo1.Length / maxBytesScan);
+        var iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
         await using var f1 = fileInfo1.OpenRead();
         await using var f2 = fileInfo2.OpenRead();
         var first = new byte[maxBytesScan];
@@ -201,7 +220,7 @@ public abstract class HandlerBase : IAsyncDisposable
         if (applyFilter)
         {
             var matcher = new Matcher();
-            if (_option.Includes is not {Length: > 0})
+            if (_option.Includes is not { Length: > 0 })
             {
                 matcher.AddInclude("**");
             }

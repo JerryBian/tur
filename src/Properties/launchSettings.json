@@ -2,7 +2,7 @@
   "profiles": {
     "Tur": {
       "commandName": "Project",
-      "commandLineArgs": "sync C:\\temp2\\4 C:\\temp2\\"
+      "commandLineArgs": "sync C:\\temp2\\ C:\\temp3\\ --minT 1658329355 --maxT 1658329520"
     }
   }
 }

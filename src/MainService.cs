@@ -51,6 +51,12 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
+        var minOption = CreateMinModifyTimeSpamOption();
+        cmd.AddOption(minOption);
+
+        var maxOption = CreateMaxModifyTimeSpamOption();
+        cmd.AddOption(maxOption);
+
         var dirArg = new Argument<string>("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -58,7 +64,7 @@ public class MainService
         cmd.AddArgument(dirArg);
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-            string dir) =>
+            string dir, long min, long max) =>
         {
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -68,12 +74,14 @@ public class MainService
 
             var option = new DffOption(output, includes, excludes, enableVerbose, _args)
             {
-                Dir = Path.GetFullPath(dir)
+                Dir = Path.GetFullPath(dir),
+                MinModifyTimeSpam = min,
+                MaxModifyTimeSpam = max
             };
 
             await using var handler = new DffHandler(option, _cancellationToken);
             await handler.HandleAsync();
-        }, includeOption, excludeOption, verboseOption, outputOption, dirArg);
+        }, includeOption, excludeOption, verboseOption, outputOption, dirArg, minOption, maxOption);
 
         return cmd;
     }
@@ -93,28 +101,34 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var yesOption = new Option<bool>(new[] {"-y", "--yes"}, "Perform deletion without confirmation.")
+        var minOption = CreateMinModifyTimeSpamOption();
+        cmd.AddOption(minOption);
+
+        var maxOption = CreateMaxModifyTimeSpamOption();
+        cmd.AddOption(maxOption);
+
+        var yesOption = new Option<bool>(new[] { "-y", "--yes" }, "Perform deletion without confirmation.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(yesOption);
 
-        var fileOption = new Option<bool>(new[] {"-f", "--file"}, "Delete files only.")
+        var fileOption = new Option<bool>(new[] { "-f", "--file" }, "Delete files only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(fileOption);
 
-        var dirOption = new Option<bool>(new[] {"-d", "--dir"}, "Delete directories only.")
+        var dirOption = new Option<bool>(new[] { "-d", "--dir" }, "Delete directories only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(dirOption);
 
-        var emptyDirOption = new Option<bool>(new[] {"--empty-dir"}, "Delete all empty directories.")
+        var emptyDirOption = new Option<bool>(new[] { "--empty-dir" }, "Delete all empty directories.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -122,7 +136,7 @@ public class MainService
         cmd.AddOption(emptyDirOption);
 
         var fromFileOption =
-            new Option<string>(new[] {"--from-file"}, "Delete all files/directories listed in specified file.")
+            new Option<string>(new[] { "--from-file" }, "Delete all files/directories listed in specified file.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
@@ -137,7 +151,7 @@ public class MainService
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
                 string dest, bool yes, bool file, bool dir, bool emptyDir,
-                string fromFile) =>
+                string fromFile, long min, long max) =>
             {
                 if (string.IsNullOrEmpty(output))
                 {
@@ -153,13 +167,15 @@ public class MainService
                     Dir = dir,
                     EmptyDir = emptyDir,
                     Yes = yes,
-                    FromFile = fromFile
+                    FromFile = fromFile,
+                    MinModifyTimeSpam = min,
+                    MaxModifyTimeSpam = max
                 };
 
                 await using var handler = new RmHandler(option, _cancellationToken);
                 await handler.HandleAsync();
             }, includeOption, excludeOption, verboseOption, outputOption, destArg, yesOption,
-            fileOption, dirOption, emptyDirOption, fromFileOption);
+            fileOption, dirOption, emptyDirOption, fromFileOption, minOption, maxOption);
 
         return cmd;
     }
@@ -179,7 +195,13 @@ public class MainService
         var verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var dryRunOption = new Option<bool>(new[] {"-n", "--dry-run"}, "Perform a trial run with no changes made.")
+        var minOption = CreateMinModifyTimeSpamOption();
+        cmd.AddOption(minOption);
+
+        var maxOption = CreateMaxModifyTimeSpamOption();
+        cmd.AddOption(maxOption);
+
+        var dryRunOption = new Option<bool>(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -187,7 +209,7 @@ public class MainService
         cmd.AddOption(dryRunOption);
 
         var deleteOption =
-            new Option<bool>(new[] {"-d", "--delete"}, "Delete extraneous files from destination directory.")
+            new Option<bool>(new[] { "-d", "--delete" }, "Delete extraneous files from destination directory.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
@@ -195,7 +217,7 @@ public class MainService
         cmd.AddOption(deleteOption);
 
         var sizeOnlyOption =
-            new Option<bool>(new[] {"--size-only"}, "Skip files that match in both name and size.")
+            new Option<bool>(new[] { "--size-only" }, "Skip files that match in both name and size.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
@@ -215,7 +237,7 @@ public class MainService
         cmd.AddArgument(destDirArg);
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output, bool delete,
-                bool dryRun, bool sizeOnly, string srcDir, string destDir) =>
+                bool dryRun, bool sizeOnly, string srcDir, string destDir, long min, long max) =>
             {
                 if (string.IsNullOrEmpty(output))
                 {
@@ -230,20 +252,22 @@ public class MainService
                     DryRun = dryRun,
                     SrcDir = srcDir,
                     DestDir = destDir,
-                    SizeOnly = sizeOnly
+                    SizeOnly = sizeOnly,
+                    MaxModifyTimeSpam = max,
+                    MinModifyTimeSpam = min
                 };
 
                 await using var handler = new SyncHandler(option, _cancellationToken);
                 await handler.HandleAsync();
             }, includeOption, excludeOption, verboseOption, outputOption, deleteOption, dryRunOption, sizeOnlyOption,
-            srcDirArg, destDirArg);
+            srcDirArg, destDirArg, minOption, maxOption);
 
         return cmd;
     }
 
     private System.CommandLine.Option CreateOutputOption()
     {
-        return new Option<string>(new[] {"-o", "--output"},
+        return new Option<string>(new[] { "-o", "--output" },
             "The output directory for logs or any file generated during processing.")
         {
             IsRequired = false,
@@ -253,7 +277,7 @@ public class MainService
 
     private System.CommandLine.Option CreateIncludeOption()
     {
-        return new Option<string[]>(new[] {"-i", "--include"}, "Glob patterns for included files.")
+        return new Option<string[]>(new[] { "-i", "--include" }, "Glob patterns for included files.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrMore
@@ -262,7 +286,7 @@ public class MainService
 
     private System.CommandLine.Option CreateExcludeOption()
     {
-        return new Option<string[]>(new[] {"-e", "--exclude"}, "Glob patterns for excluded files.")
+        return new Option<string[]>(new[] { "-e", "--exclude" }, "Glob patterns for excluded files.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -271,7 +295,25 @@ public class MainService
 
     private System.CommandLine.Option CreateVerboseOption()
     {
-        return new Option<bool>(new[] {"-v", "--verbose"}, "Display detailed logs.")
+        return new Option<bool>(new[] { "-v", "--verbose" }, "Display detailed logs.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private System.CommandLine.Option CreateMinModifyTimeSpamOption()
+    {
+        return new Option<long>(new[] { "--minT" }, "Min modify timespam filter")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private System.CommandLine.Option CreateMaxModifyTimeSpamOption()
+    {
+        return new Option<long>(new[] { "--maxT" }, "Max modify timespam filter")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

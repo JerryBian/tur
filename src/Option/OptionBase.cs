@@ -36,6 +36,9 @@ public abstract class OptionBase
 
     public string[] Excludes { get; set; }
 
+    public long MinModifyTimeSpam { get; set; }
+    public long MaxModifyTimeSpam { get; set; }
+
     public bool EnableVerbose { get; set; }
 
     public string[] RawArgs { get; set; }

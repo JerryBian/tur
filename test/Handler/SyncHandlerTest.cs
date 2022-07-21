@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Tur.Extension;
 using Tur.Handler;
 using Tur.Option;
 using Xunit;
@@ -144,5 +145,71 @@ public class SyncHandlerTest : TestBase
         Assert.Equal(5,
             Directory.GetDirectories(_destDir, "*", SearchOption.AllDirectories).Length);
         Assert.Equal(2, Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories).Length);
+    }
+
+    [Fact]
+    public async Task Test_Case_6()
+    {
+        var option = new SyncOption(null, null, null, false, Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir
+        };
+        option.MaxModifyTimeSpam = DateTime.Now.AddMinutes(-1).ToLongTimeSpan();
+        await MockFileAsync(_srcDir);
+
+        await using var handler = new SyncHandler(option, CancellationToken.None);
+        await handler.HandleAsync();
+        Assert.False(Directory.Exists(_destDir));
+    }
+
+    [Fact]
+    public async Task Test_Case_7()
+    {
+        var option = new SyncOption(null, null, null, false, Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir
+        };
+        option.MaxModifyTimeSpam = DateTime.Now.AddMinutes(1).ToLongTimeSpan();
+        await MockFileAsync(_srcDir);
+
+        await using var handler = new SyncHandler(option, CancellationToken.None);
+        await handler.HandleAsync();
+        Assert.True(Directory.Exists(_destDir));
+        Assert.Single(Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task Test_Case_8()
+    {
+        var option = new SyncOption(null, null, null, false, Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir
+        };
+        option.MinModifyTimeSpam = DateTime.Now.AddMinutes(1).ToLongTimeSpan();
+        await MockFileAsync(_srcDir);
+
+        await using var handler = new SyncHandler(option, CancellationToken.None);
+        await handler.HandleAsync();
+        Assert.False(Directory.Exists(_destDir));
+    }
+
+    [Fact]
+    public async Task Test_Case_9()
+    {
+        var option = new SyncOption(null, null, null, false, Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir
+        };
+        option.MinModifyTimeSpam = DateTime.Now.AddMinutes(-1).ToLongTimeSpan();
+        await MockFileAsync(_srcDir);
+
+        await using var handler = new SyncHandler(option, CancellationToken.None);
+        await handler.HandleAsync();
+        Assert.True(Directory.Exists(_destDir));
+        Assert.Single(Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories));
     }
 }

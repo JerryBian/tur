@@ -53,6 +53,8 @@ Options:
   -e, --exclude <exclude>  Glob patterns for excluded files.
   -o, --output <output>    The output directory for logs or any file generated during processing.
   -v, --verbose            Display detailed logs.
+  --minT                   Min modify timespam filter(long type,second level).
+  --maxT                   Max modify timespam filter(long type,second level).
   -?, -h, --help           Show help and usage information
 ```
 
@@ -78,6 +80,8 @@ Options:
   -n, --dry-run            Perform a trial run with no changes made.
   -d, --delete             Delete extraneous files from destination directory.
   --size-only              Skip files that match in both name and size.
+  --minT                   Min modify timespam filter(long type,second level).
+  --maxT                   Max modify timespam filter(long type,second level).
   -?, -h, --help           Show help and usage information
 ```
 
@@ -104,6 +108,8 @@ Options:
   -d, --dir                Delete directories only.
   --empty-dir              Delete all empty directories.
   --from-file <from-file>  Delete all files/directories listed in specified file.
+  --minT                   Min modify timespam filter(long type,second level).
+  --maxT                   Max modify timespam filter(long type,second level).
   -?, -h, --help           Show help and usage information
 ```
 

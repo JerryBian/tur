@@ -22,7 +22,7 @@ public abstract class OptionBase
             OutputDir = Path.GetTempPath();
         }
 
-        Directory.CreateDirectory(OutputDir);
+        _ = Directory.CreateDirectory(OutputDir);
         Includes = includes;
         Excludes = excludes;
         EnableVerbose = enableVerbose;

@@ -29,15 +29,15 @@ public class SyncHandler : HandlerBase
         await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
         await AggregateOutputSink.DefaultLineAsync("Creating directories in destination ... ");
 
-        var stopwatch = Stopwatch.StartNew();
-        foreach (var srcDir in EnumerateDirectories(_option.SrcDir))
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        foreach (string srcDir in EnumerateDirectories(_option.SrcDir))
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 continue;
             }
 
-            var destDir = Path.Combine(_option.DestDir, srcDir);
+            string destDir = Path.Combine(_option.DestDir, srcDir);
             if (!Directory.Exists(destDir))
             {
                 await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [D] {srcDir} ", true);
@@ -47,7 +47,7 @@ public class SyncHandler : HandlerBase
                 }
                 else
                 {
-                    Directory.CreateDirectory(destDir);
+                    _ = Directory.CreateDirectory(destDir);
                     await AggregateOutputSink.LightLineAsync($"[{Constants.CheckUnicode}]", true);
                 }
             }
@@ -64,17 +64,17 @@ public class SyncHandler : HandlerBase
         await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
         await AggregateOutputSink.DefaultLineAsync("Copying files from source to destination ... ");
 
-        var sw = Stopwatch.StartNew();
-        foreach (var relativeSrcFile in EnumerateFiles(_option.SrcDir, true))
+        Stopwatch sw = Stopwatch.StartNew();
+        foreach (string relativeSrcFile in EnumerateFiles(_option.SrcDir, true))
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 continue;
             }
 
-            var srcFile = Path.Combine(_option.SrcDir, relativeSrcFile);
-            var destFile = Path.Combine(_option.DestDir, relativeSrcFile);
-            var srcFileLength = new FileInfo(srcFile).Length;
+            string srcFile = Path.Combine(_option.SrcDir, relativeSrcFile);
+            string destFile = Path.Combine(_option.DestDir, relativeSrcFile);
+            long srcFileLength = new FileInfo(srcFile).Length;
             if (File.Exists(destFile))
             {
                 if (_option.SizeOnly && srcFileLength == new FileInfo(destFile).Length)
@@ -95,7 +95,7 @@ public class SyncHandler : HandlerBase
             }
             else
             {
-                var stopwatch = Stopwatch.StartNew();
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 await CopyAsync(srcFile, destFile, async (p, s) =>
                 {
                     if (!AppUtil.HasMainWindow)
@@ -103,14 +103,14 @@ public class SyncHandler : HandlerBase
                         return;
                     }
 
-                    var line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s]";
+                    string line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s]";
                     await ConsoleSink.ClearLineAsync(true);
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                     await ConsoleSink.InfoAsync(line, true);
                 }).OkForCancel();
                 stopwatch.Stop();
 
-                var line =
+                string line =
                     $"[{HumanUtil.GetSize(srcFileLength)}, {HumanUtil.GetRatesPerSecond(srcFileLength, stopwatch.Elapsed.TotalSeconds)}, {stopwatch.Elapsed.Human()}]";
                 await ConsoleSink.ClearLineAsync(true);
                 if (AppUtil.HasMainWindow)
@@ -137,16 +137,16 @@ public class SyncHandler : HandlerBase
         await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
         await AggregateOutputSink.DefaultLineAsync("Cleanup files in destination ... ");
 
-        var stopwatch = Stopwatch.StartNew();
-        foreach (var relativeDestFile in EnumerateFiles(_option.DestDir))
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        foreach (string relativeDestFile in EnumerateFiles(_option.DestDir))
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 continue;
             }
 
-            var srcFile = Path.Combine(_option.SrcDir, relativeDestFile);
-            var destFile = Path.Combine(_option.DestDir, relativeDestFile);
+            string srcFile = Path.Combine(_option.SrcDir, relativeDestFile);
+            string destFile = Path.Combine(_option.DestDir, relativeDestFile);
             if (!File.Exists(srcFile))
             {
                 await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeDestFile} ");
@@ -184,16 +184,16 @@ public class SyncHandler : HandlerBase
         await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
         await AggregateOutputSink.DefaultLineAsync("Cleanup directories in destination ... ");
 
-        var stopwatch = Stopwatch.StartNew();
-        foreach (var relativeDestDir in EnumerateDirectories(_option.DestDir))
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        foreach (string relativeDestDir in EnumerateDirectories(_option.DestDir))
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 continue;
             }
 
-            var srcDir = Path.Combine(_option.SrcDir, relativeDestDir);
-            var destDir = Path.Combine(_option.DestDir, relativeDestDir);
+            string srcDir = Path.Combine(_option.SrcDir, relativeDestDir);
+            string destDir = Path.Combine(_option.DestDir, relativeDestDir);
             if (!Directory.Exists(srcDir))
             {
                 await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [D] {relativeDestDir} ");

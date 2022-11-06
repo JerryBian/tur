@@ -10,13 +10,8 @@ public static class AppUtil
     {
         get
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            if (version == null)
-            {
-                return "1.0.0";
-            }
-
-            return version.ToString(3);
+            Version version = Assembly.GetExecutingAssembly().GetName().Version;
+            return version == null ? "1.0.0" : version.ToString(3);
         }
     }
 
@@ -24,7 +19,7 @@ public static class AppUtil
     {
         get
         {
-            using var process = Process.GetCurrentProcess();
+            using Process process = Process.GetCurrentProcess();
             return process.MainWindowHandle != IntPtr.Zero;
         }
     }

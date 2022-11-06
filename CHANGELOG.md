@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 4.0.0
+
+Upgrade system.commandline to beta 4.0
+
 ### 3.2.1
 
 Fix `--size-only` option not work issue.

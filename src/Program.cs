@@ -8,14 +8,14 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        using var cts = new CancellationTokenSource();
+        using CancellationTokenSource cts = new();
         Console.CancelKeyPress += (_, eventArgs) =>
         {
             cts.Cancel();
             eventArgs.Cancel = true;
         };
 
-        var mainService = new MainService(args, cts.Token);
-        await mainService.RunAsync();
+        MainService mainService = new(args, cts.Token);
+        _ = await mainService.RunAsync();
     }
 }

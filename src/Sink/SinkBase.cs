@@ -33,7 +33,7 @@ public abstract class SinkBase : ITurSink
 
         if (count > 0)
         {
-            for (var i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 await EnqueueAsync(Environment.NewLine, SinkType.Default);
             }
@@ -154,7 +154,7 @@ public abstract class SinkBase : ITurSink
     {
         try
         {
-            foreach (var sinkEntry in _messageQueue.GetConsumingEnumerable())
+            foreach (SinkEntry sinkEntry in _messageQueue.GetConsumingEnumerable())
             {
                 await ProcessSinkEntryAsync(sinkEntry);
             }
@@ -174,7 +174,7 @@ public abstract class SinkBase : ITurSink
 
     private async Task EnqueueAsync(string message, SinkType type, Exception ex = null)
     {
-        var entry = new SinkEntry(message, type, ex);
+        SinkEntry entry = new(message, type, ex);
         if (!_messageQueue.IsAddingCompleted)
         {
             try

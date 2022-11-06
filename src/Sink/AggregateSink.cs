@@ -21,8 +21,8 @@ public class AggregateSink : ITurSink
 
     public async ValueTask DisposeAsync()
     {
-        var tasks = _sinks.Select(x => x.DisposeAsync());
-        foreach (var task in tasks)
+        System.Collections.Generic.IEnumerable<ValueTask> tasks = _sinks.Select(x => x.DisposeAsync());
+        foreach (ValueTask task in tasks)
         {
             await task;
         }

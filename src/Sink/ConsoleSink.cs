@@ -93,7 +93,7 @@ public class ConsoleSink : SinkBase
 
         if (entry.Type == SinkType.ClearLine && AppUtil.HasMainWindow)
         {
-            var lineCursor = Console.CursorTop;
+            int lineCursor = Console.CursorTop;
             Console.SetCursorPosition(0, lineCursor);
             Console.Write(new string(' ', Console.BufferWidth));
             Console.SetCursorPosition(0, lineCursor);

@@ -21,16 +21,16 @@ public class MainService
 
     public async Task<int> RunAsync()
     {
-        var rootCommand = new RootCommand("Command line tool to manage files.");
+        RootCommand rootCommand = new("Command line tool to manage files.");
         rootCommand.AddAlias("tur");
 
-        var dffCmd = CreateDffCommand();
+        Command dffCmd = CreateDffCommand();
         rootCommand.AddCommand(dffCmd);
 
-        var syncCmd = CreateSyncCommand();
+        Command syncCmd = CreateSyncCommand();
         rootCommand.AddCommand(syncCmd);
 
-        var rmCmd = CreateRmCommand();
+        Command rmCmd = CreateRmCommand();
         rootCommand.AddCommand(rmCmd);
 
         return await rootCommand.InvokeAsync(_args);
@@ -38,30 +38,58 @@ public class MainService
 
     private Command CreateDffCommand()
     {
-        var cmd = new Command("dff", "Duplicate files finder.");
-        var includeOption = CreateIncludeOption();
+        Command cmd = new("dff", "Duplicate files finder.");
+        Option<string[]> includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        var excludeOption = CreateExcludeOption();
+        Option<string[]> excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        var outputOption = CreateOutputOption();
+        Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        var verboseOption = CreateVerboseOption();
+        Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var minOption = CreateMinModifyTimeSpamOption();
+        Option<long> minOption = CreateMinModifyTimeSpamOption();
         cmd.AddOption(minOption);
 
-        var maxOption = CreateMaxModifyTimeSpamOption();
+        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
         cmd.AddOption(maxOption);
 
-        var dirArg = new Argument<string>("dir", "The target directory to analysis.")
+        Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
         cmd.AddArgument(dirArg);
+
+        cmd.SetHandler(async (context) =>
+        {
+            string dir = context.ParseResult.GetValueForArgument(dirArg);
+            string output = context.ParseResult.GetValueForOption(outputOption);
+            string[] includes = context.ParseResult.GetValueForOption(includeOption);
+            string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
+            bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
+            long min = context.ParseResult.GetValueForOption(minOption);
+            long max = context.ParseResult.GetValueForOption(maxOption);
+
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            {
+                await Console.Error.WriteLineAsync($"Destination director does not exist: {dir}");
+                return;
+            }
+
+            DffOption option = new(output, includes, excludes, enableVerbose, _args)
+            {
+                Dir = Path.GetFullPath(dir),
+                MinModifyTimeSpam = min,
+                MaxModifyTimeSpam = max
+            };
+
+            await using DffHandler handler = new(option, _cancellationToken);
+            _ = await handler.HandleAsync();
+            context.ExitCode = 0;
+        });
 
         cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
             string dir, long min, long max) =>
@@ -72,15 +100,15 @@ public class MainService
                 return;
             }
 
-            var option = new DffOption(output, includes, excludes, enableVerbose, _args)
+            DffOption option = new(output, includes, excludes, enableVerbose, _args)
             {
                 Dir = Path.GetFullPath(dir),
                 MinModifyTimeSpam = min,
                 MaxModifyTimeSpam = max
             };
 
-            await using var handler = new DffHandler(option, _cancellationToken);
-            await handler.HandleAsync();
+            await using DffHandler handler = new(option, _cancellationToken);
+            _ = await handler.HandleAsync();
         }, includeOption, excludeOption, verboseOption, outputOption, dirArg, minOption, maxOption);
 
         return cmd;
@@ -88,79 +116,90 @@ public class MainService
 
     private Command CreateRmCommand()
     {
-        var cmd = new Command("rm", "Remove files or directories.");
-        var includeOption = CreateIncludeOption();
+        Command cmd = new("rm", "Remove files or directories.");
+        Option<string[]> includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        var excludeOption = CreateExcludeOption();
+        Option<string[]> excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        var outputOption = CreateOutputOption();
+        Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        var verboseOption = CreateVerboseOption();
+        Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var minOption = CreateMinModifyTimeSpamOption();
+        Option<long> minOption = CreateMinModifyTimeSpamOption();
         cmd.AddOption(minOption);
 
-        var maxOption = CreateMaxModifyTimeSpamOption();
+        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
         cmd.AddOption(maxOption);
 
-        var yesOption = new Option<bool>(new[] { "-y", "--yes" }, "Perform deletion without confirmation.")
+        Option<bool> yesOption = new(new[] { "-y", "--yes" }, "Perform deletion without confirmation.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(yesOption);
 
-        var fileOption = new Option<bool>(new[] { "-f", "--file" }, "Delete files only.")
+        Option<bool> fileOption = new(new[] { "-f", "--file" }, "Delete files only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(fileOption);
 
-        var dirOption = new Option<bool>(new[] { "-d", "--dir" }, "Delete directories only.")
+        Option<bool> dirOption = new(new[] { "-d", "--dir" }, "Delete directories only.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(dirOption);
 
-        var emptyDirOption = new Option<bool>(new[] { "--empty-dir" }, "Delete all empty directories.")
+        Option<bool> emptyDirOption = new(new[] { "--empty-dir" }, "Delete all empty directories.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(emptyDirOption);
 
-        var fromFileOption =
-            new Option<string>(new[] { "--from-file" }, "Delete all files/directories listed in specified file.")
+        Option<string> fromFileOption =
+            new(new[] { "--from-file" }, "Delete all files/directories listed in specified file.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
             };
         cmd.AddOption(fromFileOption);
 
-        var destArg = new Argument<string>("dest", "The destination directory.")
+        Argument<string> destArg = new("dest", "The destination directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
         cmd.AddArgument(destArg);
 
-        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-                string dest, bool yes, bool file, bool dir, bool emptyDir,
-                string fromFile, long min, long max) =>
+        cmd.SetHandler(async (context) =>
             {
+                var output = context.ParseResult.GetValueForOption(outputOption);
+                var includes = context.ParseResult.GetValueForOption(includeOption);
+                var excludes = context.ParseResult.GetValueForOption(excludeOption);
+                var enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
+                var dest = context.ParseResult.GetValueForArgument(destArg);
+                var file = context.ParseResult.GetValueForOption(fileOption);
+                var dir = context.ParseResult.GetValueForOption(dirOption);
+                var emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
+                var yes = context.ParseResult.GetValueForOption(yesOption);
+                var fromFile = context.ParseResult.GetValueForOption(fromFileOption);
+                var min = context.ParseResult.GetValueForOption(minOption);
+                var max = context.ParseResult.GetValueForOption(maxOption);
+
                 if (string.IsNullOrEmpty(output))
                 {
                     output = Path.GetTempPath();
                 }
 
-                Directory.CreateDirectory(output);
+                _ = Directory.CreateDirectory(output);
 
-                var option = new RmOption(output, includes, excludes, enableVerbose, _args)
+                RmOption option = new(output, includes, excludes, enableVerbose, _args)
                 {
                     Destination = Path.GetFullPath(dest),
                     File = file,
@@ -172,81 +211,91 @@ public class MainService
                     MaxModifyTimeSpam = max
                 };
 
-                await using var handler = new RmHandler(option, _cancellationToken);
-                await handler.HandleAsync();
-            }, includeOption, excludeOption, verboseOption, outputOption, destArg, yesOption,
-            fileOption, dirOption, emptyDirOption, fromFileOption, minOption, maxOption);
+                await using RmHandler handler = new(option, _cancellationToken);
+                _ = await handler.HandleAsync();
+            });
 
         return cmd;
     }
 
     private Command CreateSyncCommand()
     {
-        var cmd = new Command("sync", "Synchronize files from source to destination directory.");
-        var includeOption = CreateIncludeOption();
+        Command cmd = new("sync", "Synchronize files from source to destination directory.");
+        Option<string[]> includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        var excludeOption = CreateExcludeOption();
+        Option<string[]> excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        var outputOption = CreateOutputOption();
+        Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        var verboseOption = CreateVerboseOption();
+        Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        var minOption = CreateMinModifyTimeSpamOption();
+        Option<long> minOption = CreateMinModifyTimeSpamOption();
         cmd.AddOption(minOption);
 
-        var maxOption = CreateMaxModifyTimeSpamOption();
+        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
         cmd.AddOption(maxOption);
 
-        var dryRunOption = new Option<bool>(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
+        Option<bool> dryRunOption = new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddOption(dryRunOption);
 
-        var deleteOption =
-            new Option<bool>(new[] { "-d", "--delete" }, "Delete extraneous files from destination directory.")
+        Option<bool> deleteOption =
+            new(new[] { "-d", "--delete" }, "Delete extraneous files from destination directory.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
             };
         cmd.AddOption(deleteOption);
 
-        var sizeOnlyOption =
-            new Option<bool>(new[] { "--size-only" }, "Skip files that match in both name and size.")
+        Option<bool> sizeOnlyOption =
+            new(new[] { "--size-only" }, "Skip files that match in both name and size.")
             {
                 IsRequired = false,
                 Arity = ArgumentArity.ZeroOrOne
             };
         cmd.AddOption(sizeOnlyOption);
 
-        var srcDirArg = new Argument<string>("src", "The source directory.")
+        Argument<string> srcDirArg = new("src", "The source directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
         cmd.AddArgument(srcDirArg);
 
-        var destDirArg = new Argument<string>("dest", "The Destination directory.")
+        Argument<string> destDirArg = new("dest", "The Destination directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
         cmd.AddArgument(destDirArg);
 
-        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output, bool delete,
-                bool dryRun, bool sizeOnly, string srcDir, string destDir, long min, long max) =>
+        cmd.SetHandler(async (context) =>
             {
+                var output = context.ParseResult.GetValueForOption(outputOption);
+                var includes = context.ParseResult.GetValueForOption(includeOption);
+                var excludes = context.ParseResult.GetValueForOption(excludeOption);
+                var enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
+                var delete = context.ParseResult.GetValueForOption(deleteOption);
+                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+                var srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
+                var destDir = context.ParseResult.GetValueForArgument(destDirArg);
+                var sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
+                var min = context.ParseResult.GetValueForOption(minOption);
+                var max = context.ParseResult.GetValueForOption(maxOption);
+
                 if (string.IsNullOrEmpty(output))
                 {
                     output = Path.GetTempPath();
                 }
 
-                Directory.CreateDirectory(output);
+                _ = Directory.CreateDirectory(output);
 
-                var option = new SyncOption(output, includes, excludes, enableVerbose, _args)
+                SyncOption option = new(output, includes, excludes, enableVerbose, _args)
                 {
                     Delete = delete,
                     DryRun = dryRun,
@@ -257,15 +306,14 @@ public class MainService
                     MinModifyTimeSpam = min
                 };
 
-                await using var handler = new SyncHandler(option, _cancellationToken);
-                await handler.HandleAsync();
-            }, includeOption, excludeOption, verboseOption, outputOption, deleteOption, dryRunOption, sizeOnlyOption,
-            srcDirArg, destDirArg, minOption, maxOption);
+                await using SyncHandler handler = new(option, _cancellationToken);
+                _ = await handler.HandleAsync();
+            });
 
         return cmd;
     }
 
-    private System.CommandLine.Option CreateOutputOption()
+    private Option<string> CreateOutputOption()
     {
         return new Option<string>(new[] { "-o", "--output" },
             "The output directory for logs or any file generated during processing.")
@@ -275,7 +323,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option CreateIncludeOption()
+    private System.CommandLine.Option<string[]> CreateIncludeOption()
     {
         return new Option<string[]>(new[] { "-i", "--include" }, "Glob patterns for included files.")
         {
@@ -284,7 +332,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option CreateExcludeOption()
+    private System.CommandLine.Option<string[]> CreateExcludeOption()
     {
         return new Option<string[]>(new[] { "-e", "--exclude" }, "Glob patterns for excluded files.")
         {
@@ -293,7 +341,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option CreateVerboseOption()
+    private System.CommandLine.Option<bool> CreateVerboseOption()
     {
         return new Option<bool>(new[] { "-v", "--verbose" }, "Display detailed logs.")
         {
@@ -302,7 +350,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option CreateMinModifyTimeSpamOption()
+    private System.CommandLine.Option<long> CreateMinModifyTimeSpamOption()
     {
         return new Option<long>(new[] { "--minT" }, "Min modify timespam filter")
         {
@@ -311,7 +359,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option CreateMaxModifyTimeSpamOption()
+    private System.CommandLine.Option<long> CreateMaxModifyTimeSpamOption()
     {
         return new Option<long>(new[] { "--maxT" }, "Max modify timespam filter")
         {

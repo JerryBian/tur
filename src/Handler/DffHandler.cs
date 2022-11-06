@@ -30,12 +30,12 @@ public class DffHandler : HandlerBase
     {
         try
         {
-            var groupedItems = await ScanAndGroupFilesAsync();
+            Dictionary<long, List<string>> groupedItems = await ScanAndGroupFilesAsync();
             await AggregateOutputSink.InfoLineAsync(
                 $"{Constants.ArrowUnicode} Found {groupedItems.Count} groups with exactly same file size.");
             await AggregateOutputSink.NewLineAsync();
 
-            for (var i = 0; i < groupedItems.Count; i++)
+            for (int i = 0; i < groupedItems.Count; i++)
             {
                 if (CancellationToken.IsCancellationRequested)
                 {
@@ -60,10 +60,10 @@ public class DffHandler : HandlerBase
 
     private async Task ProcessGroupAsync(int i, Dictionary<long, List<string>> groupedItems)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var found = false;
-        var currentGroup = i + 1;
-        var group = groupedItems.ElementAt(i);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        bool found = false;
+        int currentGroup = i + 1;
+        KeyValuePair<long, List<string>> group = groupedItems.ElementAt(i);
         await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
         await AggregateOutputSink.LightAsync($"[{currentGroup}/{groupedItems.Count}] ", true);
         await AggregateOutputSink.DefaultAsync("Working on group ");
@@ -74,26 +74,26 @@ public class DffHandler : HandlerBase
         await AggregateOutputSink.InfoAsync($"{group.Value.Count}");
         await AggregateOutputSink.DefaultLineAsync(" files.");
 
-        var processedFiles = new HashSet<string>();
-        foreach (var file1 in group.Value)
+        HashSet<string> processedFiles = new();
+        foreach (string file1 in group.Value)
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 break;
             }
 
-            processedFiles.Add(file1);
-            var targetFiles = group.Value.Where(x => !processedFiles.Contains(x)).ToList();
+            _ = processedFiles.Add(file1);
+            List<string> targetFiles = group.Value.Where(x => !processedFiles.Contains(x)).ToList();
             if (!targetFiles.Any() || CancellationToken.IsCancellationRequested)
             {
                 break;
             }
 
-            var sameFiles = new List<string>();
+            List<string> sameFiles = new();
             await AggregateOutputSink.LightLineAsync(
                 $"  {Constants.SquareUnicode} Comparing below {targetFiles.Count} files with {file1}",
                 true);
-            foreach (var file2 in targetFiles)
+            foreach (string file2 in targetFiles)
             {
                 if (CancellationToken.IsCancellationRequested)
                 {
@@ -105,7 +105,7 @@ public class DffHandler : HandlerBase
                         Path.Combine(_option.Dir, file2)))
                 {
                     found = true;
-                    processedFiles.Add(file2);
+                    _ = processedFiles.Add(file2);
                     await AggregateOutputSink.WarnLineAsync($"[{Constants.CheckUnicode}]", true);
                     sameFiles.Add(file2);
                 }
@@ -120,7 +120,7 @@ public class DffHandler : HandlerBase
                 sameFiles.Add(file1);
                 sameFiles = sameFiles.Select(x => Path.Combine(_option.Dir, x)).ToList();
 
-                foreach (var sameFile in sameFiles)
+                foreach (string sameFile in sameFiles)
                 {
                     await _exportedDupFileSink.DefaultLineAsync(sameFile);
                 }
@@ -151,19 +151,19 @@ public class DffHandler : HandlerBase
 
     private async Task<Dictionary<long, List<string>>> ScanAndGroupFilesAsync()
     {
-        var groupedItems = new Dictionary<long, List<string>>();
+        Dictionary<long, List<string>> groupedItems = new();
         await AggregateOutputSink.LightLineAsync($"{Constants.ArrowUnicode} Scanning directory: {_option.Dir}", true);
         await AggregateOutputSink.NewLineAsync(true);
 
-        foreach (var file in EnumerateFiles(_option.Dir, true))
+        foreach (string file in EnumerateFiles(_option.Dir, true))
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 break;
             }
 
-            var fullPath = Path.Combine(_option.Dir, file);
-            var fileSize = new FileInfo(fullPath).Length;
+            string fullPath = Path.Combine(_option.Dir, file);
+            long fileSize = new FileInfo(fullPath).Length;
             if (!groupedItems.ContainsKey(fileSize))
             {
                 groupedItems.Add(fileSize, new List<string>());

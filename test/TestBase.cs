@@ -19,7 +19,7 @@ public abstract class TestBase : IDisposable
 
     public byte[] GetRandomBytes(long length)
     {
-        var bytes = new byte[length];
+        byte[] bytes = new byte[length];
         _random.NextBytes(bytes);
         return bytes;
     }
@@ -27,13 +27,13 @@ public abstract class TestBase : IDisposable
     public async Task<string> MockFileAsync(string dir, byte[] bytes = null, string fileName = null,
         long fileLength = -1)
     {
-        Directory.CreateDirectory(dir);
+        _ = Directory.CreateDirectory(dir);
 
         fileLength = fileLength < 0 ? _random.Next(1024 * 1024) : fileLength;
         bytes ??= GetRandomBytes(fileLength);
         fileName ??= GetRandomName();
 
-        var fullPath = Path.Combine(dir, fileName);
+        string fullPath = Path.Combine(dir, fileName);
         await File.WriteAllBytesAsync(fullPath, bytes);
         return fullPath;
     }
@@ -41,32 +41,32 @@ public abstract class TestBase : IDisposable
     public string MockSubDir(string dir, string subDirName = null)
     {
         subDirName ??= GetRandomName();
-        var fullPath = Path.Combine(dir, subDirName);
-        Directory.CreateDirectory(fullPath);
+        string fullPath = Path.Combine(dir, subDirName);
+        _ = Directory.CreateDirectory(fullPath);
         return fullPath;
     }
 
     public async Task<DirTree> MockDirAsync(string dir, int topDirs, int topFiles, int nestingLevel = 0,
         long fileLength = -1)
     {
-        var dirTree = new DirTree(Path.GetFileName(dir), Path.GetDirectoryName(dir));
+        DirTree dirTree = new(Path.GetFileName(dir), Path.GetDirectoryName(dir));
 
         if (nestingLevel < 0)
         {
             return dirTree;
         }
 
-        Directory.CreateDirectory(dir);
+        _ = Directory.CreateDirectory(dir);
 
-        for (var i = 0; i < topDirs; i++)
+        for (int i = 0; i < topDirs; i++)
         {
-            var file = await MockFileAsync(dir, fileLength: fileLength);
+            string file = await MockFileAsync(dir, fileLength: fileLength);
             dirTree.Files.Add(Path.GetFileName(file));
         }
 
-        for (var j = 0; j < topDirs; j++)
+        for (int j = 0; j < topDirs; j++)
         {
-            var subDir = MockSubDir(dir);
+            string subDir = MockSubDir(dir);
             dirTree.SubDirTrees.Add(await MockDirAsync(subDir, topDirs, topFiles, nestingLevel - 1, fileLength));
         }
 

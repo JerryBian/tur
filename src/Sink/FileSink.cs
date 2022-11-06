@@ -19,7 +19,7 @@ public class FileSink : SinkBase
     {
         try
         {
-            var str = string.Empty;
+            string str = string.Empty;
             if (!string.IsNullOrEmpty(entry.Message))
             {
                 str += entry.Message;
@@ -30,9 +30,9 @@ public class FileSink : SinkBase
                 str += Environment.NewLine + entry.Exception;
             }
 
-            if (entry.Type == SinkType.DefaultLine || entry.Type == SinkType.InfoLine ||
-                entry.Type == SinkType.WarnLine || entry.Type == SinkType.ErrorLine ||
-                entry.Type == SinkType.LightLine)
+            if (entry.Type is SinkType.DefaultLine or SinkType.InfoLine or
+                SinkType.WarnLine or SinkType.ErrorLine or
+                SinkType.LightLine)
             {
                 str += Environment.NewLine;
             }

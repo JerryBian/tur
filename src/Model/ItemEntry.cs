@@ -17,32 +17,21 @@ public class ItemEntry
 
     public string GetDisplayPath()
     {
-        if (!string.IsNullOrEmpty(RelativePath))
-        {
-            return RelativePath;
-        }
-
-        return FullPath;
+        return !string.IsNullOrEmpty(RelativePath) ? RelativePath : FullPath;
     }
 
     public override bool Equals(object obj)
     {
-        var other = obj as ItemEntry;
-        if (other == null)
-        {
-            return false;
-        }
-
-        return FullPath == other.FullPath;
+        return obj is ItemEntry other && FullPath == other.FullPath;
     }
 
     public override int GetHashCode()
     {
         unchecked
         {
-            var hash = 17;
-            hash = hash * 23 + IsDir.GetHashCode();
-            hash = hash * 23 + FullPath.GetHashCode();
+            int hash = 17;
+            hash = (hash * 23) + IsDir.GetHashCode();
+            hash = (hash * 23) + FullPath.GetHashCode();
             return hash;
         }
     }

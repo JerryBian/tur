@@ -18,17 +18,17 @@ public class DffHandlerTest : TestBase
     public DffHandlerTest()
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
-        Directory.CreateDirectory(_dir);
-        _option = new DffOption(null, null, null, true, Array.Empty<string>()) {Dir = _dir};
+        _ = Directory.CreateDirectory(_dir);
+        _option = new DffOption(null, null, null, true, Array.Empty<string>()) { Dir = _dir };
     }
 
     [Fact]
     public async Task Test_Case_1()
     {
-        await MockFileAsync(_dir, fileLength: 10);
-        await MockFileAsync(_dir, fileLength: 20);
-        await using var handler = new DffHandler(_option, CancellationToken.None);
-        var exitCode = await handler.HandleAsync();
+        _ = await MockFileAsync(_dir, fileLength: 10);
+        _ = await MockFileAsync(_dir, fileLength: 20);
+        await using DffHandler handler = new(_option, CancellationToken.None);
+        int exitCode = await handler.HandleAsync();
         Assert.Null(_option.ExportedList);
         Assert.Equal(1, exitCode);
     }
@@ -36,11 +36,11 @@ public class DffHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_2()
     {
-        var bytes = GetRandomBytes(10);
-        await MockFileAsync(_dir, bytes);
-        await MockFileAsync(_dir, bytes);
-        await using var handler = new DffHandler(_option, CancellationToken.None);
-        var exitCode = await handler.HandleAsync();
+        byte[] bytes = GetRandomBytes(10);
+        _ = await MockFileAsync(_dir, bytes);
+        _ = await MockFileAsync(_dir, bytes);
+        await using DffHandler handler = new(_option, CancellationToken.None);
+        int exitCode = await handler.HandleAsync();
         Assert.Null(_option.ExportedList);
         Assert.Equal(1, exitCode);
     }
@@ -49,20 +49,20 @@ public class DffHandlerTest : TestBase
     public async Task Test_Case_3()
     {
         _option.ExportedList = new List<List<string>>();
-        var bytes = GetRandomBytes(10);
-        var folder1 = "folder1";
-        var file1 = "file1";
-        var file2 = "file2";
-        MockSubDir(_dir, folder1);
-        await MockFileAsync(Path.Combine(_dir, folder1), bytes, file1);
-        await MockFileAsync(_dir, bytes, file2);
-        await MockDirAsync(_dir, 3, 4, 2, 20);
+        byte[] bytes = GetRandomBytes(10);
+        string folder1 = "folder1";
+        string file1 = "file1";
+        string file2 = "file2";
+        _ = MockSubDir(_dir, folder1);
+        _ = await MockFileAsync(Path.Combine(_dir, folder1), bytes, file1);
+        _ = await MockFileAsync(_dir, bytes, file2);
+        _ = await MockDirAsync(_dir, 3, 4, 2, 20);
 
-        await using var handler = new DffHandler(_option, CancellationToken.None);
-        var exitCode = await handler.HandleAsync();
+        await using DffHandler handler = new(_option, CancellationToken.None);
+        int exitCode = await handler.HandleAsync();
         Assert.NotNull(_option.ExportedList);
         Assert.Equal(1, exitCode);
-        Assert.Single(_option.ExportedList);
+        _ = Assert.Single(_option.ExportedList);
         Assert.Equal(2, _option.ExportedList[0].Count);
         Assert.Contains(Path.Combine(_dir, folder1, file1), _option.ExportedList[0]);
         Assert.Contains(Path.Combine(_dir, file2), _option.ExportedList[0]);
@@ -72,8 +72,8 @@ public class DffHandlerTest : TestBase
     public async Task Test_Case_4()
     {
         _option.Dir = Path.GetRandomFileName();
-        await using var handler = new DffHandler(_option, CancellationToken.None);
-        var exitCode = await handler.HandleAsync();
+        await using DffHandler handler = new(_option, CancellationToken.None);
+        int exitCode = await handler.HandleAsync();
         Assert.Equal(1, exitCode);
         Assert.False(Directory.GetFiles(_dir, "*.txt").Any());
     }

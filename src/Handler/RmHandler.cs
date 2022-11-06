@@ -20,7 +20,7 @@ public class RmHandler : HandlerBase
 
     private async Task<List<ItemEntry>> GetFromFileListAsync()
     {
-        var result = new List<ItemEntry>();
+        List<ItemEntry> result = new();
         if (!string.IsNullOrEmpty(_option.FromFile))
         {
             await AggregateOutputSink.DefaultLineAsync(
@@ -30,7 +30,7 @@ public class RmHandler : HandlerBase
                 throw new Exception($"File not found for --from-file: {_option.FromFile}");
             }
 
-            foreach (var item in await File.ReadAllLinesAsync(_option.FromFile, CancellationToken))
+            foreach (string item in await File.ReadAllLinesAsync(_option.FromFile, CancellationToken))
             {
                 if (File.Exists(item))
                 {
@@ -54,14 +54,14 @@ public class RmHandler : HandlerBase
 
     private async Task<List<ItemEntry>> GetFromFilterAsync()
     {
-        var result = new List<ItemEntry>();
+        List<ItemEntry> result = new();
 
-        var filterFiles = _option.File || !_option.File && !_option.Dir;
+        bool filterFiles = _option.File || (!_option.File && !_option.Dir);
         if (filterFiles)
         {
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Looking for files on deletion ...", true);
-            foreach (var file in EnumerateFiles(_option.Destination, true, true))
+            foreach (string file in EnumerateFiles(_option.Destination, true, true))
             {
                 result.Add(new ItemEntry(file, Path.GetRelativePath(_option.Destination, file)));
             }
@@ -71,12 +71,12 @@ public class RmHandler : HandlerBase
             await AggregateOutputSink.NewLineAsync(true);
         }
 
-        var filterDirs = _option.Dir || !_option.File && !_option.Dir;
+        bool filterDirs = _option.Dir || (!_option.File && !_option.Dir);
         if (filterDirs)
         {
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Looking for directories on deletion ...", true);
-            foreach (var dir in EnumerateDirectories(_option.Destination, true, true))
+            foreach (string dir in EnumerateDirectories(_option.Destination, true, true))
             {
                 result.Add(new ItemEntry(dir, Path.GetRelativePath(_option.Destination, dir), true));
             }
@@ -100,7 +100,7 @@ public class RmHandler : HandlerBase
             $"{Constants.ArrowUnicode} Following [");
         await AggregateOutputSink.InfoAsync(entries.Count.ToString());
         await AggregateOutputSink.DefaultLineAsync("] files are on the deletion list ...");
-        foreach (var entry in entries)
+        foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
         }
@@ -122,7 +122,7 @@ public class RmHandler : HandlerBase
         await ConsoleSink.NewLineAsync();
         await AggregateOutputSink.DefaultLineAsync(
             $"{Constants.ArrowUnicode} Deletion started ...");
-        foreach (var entry in entries)
+        foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
             if (File.Exists(entry.FullPath))
@@ -151,7 +151,7 @@ public class RmHandler : HandlerBase
             $"{Constants.ArrowUnicode} Following [");
         await AggregateOutputSink.InfoAsync(entries.Count.ToString());
         await AggregateOutputSink.DefaultLineAsync("] directories are on the deletion list ...");
-        foreach (var entry in entries)
+        foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
         }
@@ -174,7 +174,7 @@ public class RmHandler : HandlerBase
         await AggregateOutputSink.DefaultLineAsync(
             $"{Constants.ArrowUnicode} Deletion started ...");
 
-        foreach (var entry in entries)
+        foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
             if (Directory.Exists(entry.FullPath))
@@ -200,14 +200,14 @@ public class RmHandler : HandlerBase
         }
 
         await AggregateOutputSink.DefaultLineAsync($"{Constants.ArrowUnicode} Cleanup empty directories started ...");
-        var emptyDirs = EnumerateDirectories(_option.Destination, returnAbsolutePath: true)
+        List<string> emptyDirs = EnumerateDirectories(_option.Destination, returnAbsolutePath: true)
             .Where(x => !EnumerateFiles(x).Any()).ToList();
         if (emptyDirs.Any())
         {
             await AggregateOutputSink.DefaultAsync("    Following [", true);
             await AggregateOutputSink.InfoAsync(emptyDirs.Count.ToString());
             await AggregateOutputSink.DefaultLineAsync("] empty directories are on the deletion list ...");
-            foreach (var emptyDir in emptyDirs)
+            foreach (string emptyDir in emptyDirs)
             {
                 await AggregateOutputSink.LightLineAsync(
                     $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)}");
@@ -232,7 +232,7 @@ public class RmHandler : HandlerBase
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Deletion started ...");
 
-            foreach (var emptyDir in emptyDirs)
+            foreach (string emptyDir in emptyDirs)
             {
                 await AggregateOutputSink.LightAsync(
                     $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)} ");
@@ -261,13 +261,13 @@ public class RmHandler : HandlerBase
     {
         try
         {
-            var entries = await GetFromFileListAsync();
+            List<ItemEntry> entries = await GetFromFileListAsync();
             entries.AddRange(await GetFromFilterAsync());
 
-            var fileEntries = entries.Where(x => !x.IsDir).Distinct().ToList();
+            List<ItemEntry> fileEntries = entries.Where(x => !x.IsDir).Distinct().ToList();
             await DeleteFilesAsync(fileEntries);
 
-            var dirEntries = entries.Where(x => x.IsDir).Distinct().ToList();
+            List<ItemEntry> dirEntries = entries.Where(x => x.IsDir).Distinct().ToList();
             await DeleteDirsAsync(dirEntries);
 
             await CleanupEmptyDirsAsync();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.FileSystemGlobbing;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -6,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.FileSystemGlobbing;
 using Tur.Extension;
 using Tur.Option;
 using Tur.Sink;
@@ -37,7 +37,7 @@ public abstract class HandlerBase : IAsyncDisposable
         LogFileSink = new FileSink(_logFile, option);
         AggregateOutputSink = new AggregateSink(ConsoleSink, LogFileSink);
 
-        var gcMemoryInfo = GC.GetGCMemoryInfo();
+        GCMemoryInfo gcMemoryInfo = GC.GetGCMemoryInfo();
         _maxBytesScan = Convert.ToInt32(Math.Min(gcMemoryInfo.TotalAvailableMemoryBytes / 10, 3 * 1024 * 1024));
     }
 
@@ -64,47 +64,42 @@ public abstract class HandlerBase : IAsyncDisposable
             return Enumerable.Empty<string>();
         }
 
-        var files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories);
+        IEnumerable<string> files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories);
         if (applyFilter)
         {
-            var matcher = new Matcher();
+            Matcher matcher = new();
             if (_option.Includes is not { Length: > 0 })
             {
-                matcher.AddInclude("**");
+                _ = matcher.AddInclude("**");
             }
             else
             {
-                foreach (var include in _option.Includes)
+                foreach (string include in _option.Includes)
                 {
-                    matcher.AddInclude(include);
+                    _ = matcher.AddInclude(include);
                 }
             }
 
             if (_option.Excludes != null)
             {
-                foreach (var exclude in _option.Excludes)
+                foreach (string exclude in _option.Excludes)
                 {
-                    matcher.AddExclude(exclude);
+                    _ = matcher.AddExclude(exclude);
                 }
             }
 
-            var matchResult = matcher.Match(dir, files);
+            PatternMatchingResult matchResult = matcher.Match(dir, files);
 
-            var matchFiles = matchResult.Files;
+            IEnumerable<FilePatternMatch> matchFiles = matchResult.Files;
 
             if (_option.MinModifyTimeSpam != 0 || _option.MaxModifyTimeSpam != 0)
             {
-                var minDate = _option.MinModifyTimeSpam == 0 ? DateTime.MinValue : _option.MinModifyTimeSpam.ToDateTime();
-                var maxDate = _option.MaxModifyTimeSpam == 0 ? DateTime.MaxValue : _option.MaxModifyTimeSpam.ToDateTime();
+                DateTime minDate = _option.MinModifyTimeSpam == 0 ? DateTime.MinValue : _option.MinModifyTimeSpam.ToDateTime();
+                DateTime maxDate = _option.MaxModifyTimeSpam == 0 ? DateTime.MaxValue : _option.MaxModifyTimeSpam.ToDateTime();
                 matchFiles = matchFiles.Where((f) =>
                 {
-                    var fileInfo = new FileInfo(Path.Combine(dir, f.Path));
-                    if (!fileInfo.Exists)
-                    {
-                        return false;
-                    }
-
-                    return fileInfo.LastWriteTime >= minDate && fileInfo.LastWriteTime <= maxDate;
+                    FileInfo fileInfo = new(Path.Combine(dir, f.Path));
+                    return fileInfo.Exists && fileInfo.LastWriteTime >= minDate && fileInfo.LastWriteTime <= maxDate;
                 });
             }
 
@@ -117,12 +112,7 @@ public abstract class HandlerBase : IAsyncDisposable
                 Path.GetRelativePath(dir, Path.Combine(dir, x.Path))); // Matcher returns non cross platform separator
         }
 
-        if (returnAbsolutePath)
-        {
-            return files;
-        }
-
-        return files.Select(x => Path.GetRelativePath(dir, x));
+        return returnAbsolutePath ? files : files.Select(x => Path.GetRelativePath(dir, x));
     }
 
     protected async Task CopyAsync(string srcFile, string destFile, Func<int, double, Task> progressChanged)
@@ -132,21 +122,21 @@ public abstract class HandlerBase : IAsyncDisposable
             return;
         }
 
-        var destDir = Path.GetDirectoryName(destFile);
+        string destDir = Path.GetDirectoryName(destFile);
         if (!string.IsNullOrEmpty(destDir))
         {
-            Directory.CreateDirectory(destDir);
+            _ = Directory.CreateDirectory(destDir);
         }
 
-        await using var src = new FileStream(srcFile, FileMode.Open, FileAccess.Read);
-        var srcFileLength = src.Length;
-        var buffer = new byte[Math.Min(_maxBytesScan, srcFileLength)];
-        await using var dest = new FileStream(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+        await using FileStream src = new(srcFile, FileMode.Open, FileAccess.Read);
+        long srcFileLength = src.Length;
+        byte[] buffer = new byte[Math.Min(_maxBytesScan, srcFileLength)];
+        await using FileStream dest = new(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
         dest.SetLength(0);
-        var bytesWritten = 0L;
+        long bytesWritten = 0L;
         int currentBlockSize;
 
-        var stopwatch = Stopwatch.StartNew();
+        Stopwatch stopwatch = Stopwatch.StartNew();
         while ((currentBlockSize = await src.ReadAsync(buffer, 0, buffer.Length, CancellationToken)) > 0)
         {
             await dest.WriteAsync(buffer, 0, currentBlockSize, CancellationToken);
@@ -165,29 +155,29 @@ public abstract class HandlerBase : IAsyncDisposable
             return true;
         }
 
-        var fileInfo1 = new FileInfo(file1);
-        var fileInfo2 = new FileInfo(file2);
+        FileInfo fileInfo1 = new(file1);
+        FileInfo fileInfo2 = new(file2);
         if (fileInfo1.Length != fileInfo2.Length)
         {
             return false;
         }
 
-        var maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
-        var iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
-        await using var f1 = fileInfo1.OpenRead();
-        await using var f2 = fileInfo2.OpenRead();
-        var first = new byte[maxBytesScan];
-        var second = new byte[maxBytesScan];
+        int maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
+        int iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
+        await using FileStream f1 = fileInfo1.OpenRead();
+        await using FileStream f2 = fileInfo2.OpenRead();
+        byte[] first = new byte[maxBytesScan];
+        byte[] second = new byte[maxBytesScan];
 
-        for (var i = 0; i < iterations; i++)
+        for (int i = 0; i < iterations; i++)
         {
             if (CancellationToken.IsCancellationRequested)
             {
                 return false;
             }
 
-            var firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken);
-            var secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken);
+            int firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken);
+            int secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken);
             if (firstBytes != secondBytes)
             {
                 return false;
@@ -215,54 +205,48 @@ public abstract class HandlerBase : IAsyncDisposable
             return Enumerable.Empty<string>();
         }
 
-        var dirs = Directory
+        IEnumerable<string> dirs = Directory
             .EnumerateDirectories(dir, "*", SearchOption.AllDirectories);
         if (applyFilter)
         {
-            var matcher = new Matcher();
+            Matcher matcher = new();
             if (_option.Includes is not { Length: > 0 })
             {
-                matcher.AddInclude("**");
+                _ = matcher.AddInclude("**");
             }
             else
             {
-                foreach (var include in _option.Includes)
+                foreach (string include in _option.Includes)
                 {
-                    matcher.AddInclude(include);
+                    _ = matcher.AddInclude(include);
                 }
             }
 
             if (_option.Excludes != null)
             {
-                foreach (var exclude in _option.Excludes)
+                foreach (string exclude in _option.Excludes)
                 {
-                    matcher.AddExclude(exclude);
+                    _ = matcher.AddExclude(exclude);
                 }
             }
 
-            var matchResult = matcher.Match(dir, dirs);
-            if (returnAbsolutePath)
-            {
-                return matchResult.Files.Select(x => Path.Combine(dir, x.Path));
-            }
-
-            return matchResult.Files.Select(x => Path.GetRelativePath(dir, Path.Combine(dir, x.Path)));
+            PatternMatchingResult matchResult = matcher.Match(dir, dirs);
+            return returnAbsolutePath
+                ? matchResult.Files.Select(x => Path.Combine(dir, x.Path))
+                : matchResult.Files.Select(x => Path.GetRelativePath(dir, Path.Combine(dir, x.Path)));
         }
 
-        if (returnAbsolutePath)
-        {
-            return dirs;
-        }
-
-        return dirs
+        return returnAbsolutePath
+            ? dirs
+            : dirs
             .Select(x => Path.GetRelativePath(dir, x));
     }
 
     public virtual async Task<int> HandleAsync()
     {
         await WriteLogFileHeaderAsync();
-        var stopwatch = Stopwatch.StartNew();
-        var exitCode = await HandleInternalAsync();
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        int exitCode = await HandleInternalAsync();
         stopwatch.Stop();
         await AggregateOutputSink.DefaultLineAsync(
             $"{Constants.ArrowUnicode} All done. Elapsed: [{stopwatch.Elapsed.Human()}]");
@@ -271,10 +255,10 @@ public abstract class HandlerBase : IAsyncDisposable
 
     private async Task WriteLogFileHeaderAsync()
     {
-        var sb = new StringBuilder();
-        sb.AppendLine($"### Processed by tur {AppUtil.AppVersion}");
-        sb.AppendLine($"### Command: tur {string.Join(" ", _option.RawArgs)}");
-        sb.AppendLine();
+        StringBuilder sb = new();
+        _ = sb.AppendLine($"### Processed by tur {AppUtil.AppVersion}");
+        _ = sb.AppendLine($"### Command: tur {string.Join(" ", _option.RawArgs)}");
+        _ = sb.AppendLine();
 
         await File.WriteAllTextAsync(_logFile, sb.ToString(), new UTF8Encoding(false), CancellationToken)
             .OkForCancel();

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.CommandLine;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Tur.Handler;
 using Tur.Option;
@@ -11,12 +10,10 @@ namespace Tur;
 public class MainService
 {
     private readonly string[] _args;
-    private readonly CancellationToken _cancellationToken;
 
-    public MainService(string[] args, CancellationToken cancellationToken)
+    public MainService(string[] args)
     {
         _args = args;
-        _cancellationToken = cancellationToken;
     }
 
     public async Task<int> RunAsync()
@@ -51,11 +48,11 @@ public class MainService
         Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        Option<long> minOption = CreateMinModifyTimeSpamOption();
-        cmd.AddOption(minOption);
+        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        cmd.AddOption(lastModifyAfterOption);
 
-        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
-        cmd.AddOption(maxOption);
+        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        cmd.AddOption(lastModifyBeforeOption);
 
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
@@ -70,8 +67,8 @@ public class MainService
             string[] includes = context.ParseResult.GetValueForOption(includeOption);
             string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
             bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
-            long min = context.ParseResult.GetValueForOption(minOption);
-            long max = context.ParseResult.GetValueForOption(maxOption);
+            DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+            DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -82,34 +79,13 @@ public class MainService
             DffOption option = new(output, includes, excludes, enableVerbose, _args)
             {
                 Dir = Path.GetFullPath(dir),
-                MinModifyTimeSpam = min,
-                MaxModifyTimeSpam = max
+                LastModifyAfter = lastModifyAfter,
+                LastModifyBefore = lastModifyBefore
             };
 
-            await using DffHandler handler = new(option, _cancellationToken);
-            _ = await handler.HandleAsync();
-            context.ExitCode = 0;
+            await using DffHandler handler = new(option, context.GetCancellationToken());
+            context.ExitCode = await handler.HandleAsync();
         });
-
-        cmd.SetHandler(async (string[] includes, string[] excludes, bool enableVerbose, string output,
-            string dir, long min, long max) =>
-        {
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-            {
-                await Console.Error.WriteLineAsync($"Destination director does not exist: {dir}");
-                return;
-            }
-
-            DffOption option = new(output, includes, excludes, enableVerbose, _args)
-            {
-                Dir = Path.GetFullPath(dir),
-                MinModifyTimeSpam = min,
-                MaxModifyTimeSpam = max
-            };
-
-            await using DffHandler handler = new(option, _cancellationToken);
-            _ = await handler.HandleAsync();
-        }, includeOption, excludeOption, verboseOption, outputOption, dirArg, minOption, maxOption);
 
         return cmd;
     }
@@ -129,11 +105,11 @@ public class MainService
         Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        Option<long> minOption = CreateMinModifyTimeSpamOption();
-        cmd.AddOption(minOption);
+        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        cmd.AddOption(lastModifyAfterOption);
 
-        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
-        cmd.AddOption(maxOption);
+        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        cmd.AddOption(lastModifyBeforeOption);
 
         Option<bool> yesOption = new(new[] { "-y", "--yes" }, "Perform deletion without confirmation.")
         {
@@ -179,18 +155,18 @@ public class MainService
 
         cmd.SetHandler(async (context) =>
             {
-                var output = context.ParseResult.GetValueForOption(outputOption);
-                var includes = context.ParseResult.GetValueForOption(includeOption);
-                var excludes = context.ParseResult.GetValueForOption(excludeOption);
-                var enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
-                var dest = context.ParseResult.GetValueForArgument(destArg);
-                var file = context.ParseResult.GetValueForOption(fileOption);
-                var dir = context.ParseResult.GetValueForOption(dirOption);
-                var emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
-                var yes = context.ParseResult.GetValueForOption(yesOption);
-                var fromFile = context.ParseResult.GetValueForOption(fromFileOption);
-                var min = context.ParseResult.GetValueForOption(minOption);
-                var max = context.ParseResult.GetValueForOption(maxOption);
+                string output = context.ParseResult.GetValueForOption(outputOption);
+                string[] includes = context.ParseResult.GetValueForOption(includeOption);
+                string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
+                bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
+                string dest = context.ParseResult.GetValueForArgument(destArg);
+                bool file = context.ParseResult.GetValueForOption(fileOption);
+                bool dir = context.ParseResult.GetValueForOption(dirOption);
+                bool emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
+                bool yes = context.ParseResult.GetValueForOption(yesOption);
+                string fromFile = context.ParseResult.GetValueForOption(fromFileOption);
+                DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+                DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -207,12 +183,12 @@ public class MainService
                     EmptyDir = emptyDir,
                     Yes = yes,
                     FromFile = fromFile,
-                    MinModifyTimeSpam = min,
-                    MaxModifyTimeSpam = max
+                    LastModifyAfter = lastModifyAfter,
+                    LastModifyBefore = lastModifyBefore
                 };
 
-                await using RmHandler handler = new(option, _cancellationToken);
-                _ = await handler.HandleAsync();
+                await using RmHandler handler = new(option, context.GetCancellationToken());
+                context.ExitCode = await handler.HandleAsync();
             });
 
         return cmd;
@@ -233,11 +209,11 @@ public class MainService
         Option<bool> verboseOption = CreateVerboseOption();
         cmd.AddOption(verboseOption);
 
-        Option<long> minOption = CreateMinModifyTimeSpamOption();
-        cmd.AddOption(minOption);
+        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        cmd.AddOption(lastModifyAfterOption);
 
-        Option<long> maxOption = CreateMaxModifyTimeSpamOption();
-        cmd.AddOption(maxOption);
+        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        cmd.AddOption(lastModifyBeforeOption);
 
         Option<bool> dryRunOption = new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
         {
@@ -276,17 +252,17 @@ public class MainService
 
         cmd.SetHandler(async (context) =>
             {
-                var output = context.ParseResult.GetValueForOption(outputOption);
-                var includes = context.ParseResult.GetValueForOption(includeOption);
-                var excludes = context.ParseResult.GetValueForOption(excludeOption);
-                var enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
-                var delete = context.ParseResult.GetValueForOption(deleteOption);
-                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
-                var srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
-                var destDir = context.ParseResult.GetValueForArgument(destDirArg);
-                var sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
-                var min = context.ParseResult.GetValueForOption(minOption);
-                var max = context.ParseResult.GetValueForOption(maxOption);
+                string output = context.ParseResult.GetValueForOption(outputOption);
+                string[] includes = context.ParseResult.GetValueForOption(includeOption);
+                string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
+                bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
+                bool delete = context.ParseResult.GetValueForOption(deleteOption);
+                bool dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+                string srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
+                string destDir = context.ParseResult.GetValueForArgument(destDirArg);
+                bool sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
+                DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+                DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -302,12 +278,12 @@ public class MainService
                     SrcDir = srcDir,
                     DestDir = destDir,
                     SizeOnly = sizeOnly,
-                    MaxModifyTimeSpam = max,
-                    MinModifyTimeSpam = min
+                    LastModifyBefore = lastModifyBefore,
+                    LastModifyAfter = lastModifyAfter
                 };
 
-                await using SyncHandler handler = new(option, _cancellationToken);
-                _ = await handler.HandleAsync();
+                await using SyncHandler handler = new(option, context.GetCancellationToken());
+                context.ExitCode = await handler.HandleAsync();
             });
 
         return cmd;
@@ -323,7 +299,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option<string[]> CreateIncludeOption()
+    private Option<string[]> CreateIncludeOption()
     {
         return new Option<string[]>(new[] { "-i", "--include" }, "Glob patterns for included files.")
         {
@@ -332,7 +308,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option<string[]> CreateExcludeOption()
+    private Option<string[]> CreateExcludeOption()
     {
         return new Option<string[]>(new[] { "-e", "--exclude" }, "Glob patterns for excluded files.")
         {
@@ -341,7 +317,7 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option<bool> CreateVerboseOption()
+    private Option<bool> CreateVerboseOption()
     {
         return new Option<bool>(new[] { "-v", "--verbose" }, "Display detailed logs.")
         {
@@ -350,18 +326,18 @@ public class MainService
         };
     }
 
-    private System.CommandLine.Option<long> CreateMinModifyTimeSpamOption()
+    private Option<DateTime> CreateLastModifyAfterOption()
     {
-        return new Option<long>(new[] { "--minT" }, "Min modify timespam filter")
+        return new Option<DateTime>(new[] { "--last-modify-after" }, "Last modify after filter. e.g., 2022-10-01T10:20:21")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
         };
     }
 
-    private System.CommandLine.Option<long> CreateMaxModifyTimeSpamOption()
+    private Option<DateTime> CreateLastModifyBeforeOption()
     {
-        return new Option<long>(new[] { "--maxT" }, "Max modify timespam filter")
+        return new Option<DateTime>(new[] { "--last-modify-before" }, "Last modify before fitler. e.g., 2022-08-02T16:20:21")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

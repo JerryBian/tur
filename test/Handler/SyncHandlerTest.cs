@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Tur.Extension;
 using Tur.Handler;
 using Tur.Option;
 using Xunit;
@@ -154,7 +153,7 @@ public class SyncHandlerTest : TestBase
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            MaxModifyTimeSpam = DateTime.Now.AddMinutes(-1).ToLongTimeSpan()
+            LastModifyBefore = DateTime.Now.AddMinutes(-1)
         };
         _ = await MockFileAsync(_srcDir);
 
@@ -170,7 +169,7 @@ public class SyncHandlerTest : TestBase
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            MaxModifyTimeSpam = DateTime.Now.AddMinutes(1).ToLongTimeSpan()
+            LastModifyBefore = DateTime.Now.AddMinutes(1)
         };
         _ = await MockFileAsync(_srcDir);
 
@@ -187,7 +186,7 @@ public class SyncHandlerTest : TestBase
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            MinModifyTimeSpam = DateTime.Now.AddMinutes(1).ToLongTimeSpan()
+            LastModifyAfter = DateTime.Now.AddMinutes(1)
         };
         _ = await MockFileAsync(_srcDir);
 
@@ -203,7 +202,7 @@ public class SyncHandlerTest : TestBase
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            MinModifyTimeSpam = DateTime.Now.AddMinutes(-1).ToLongTimeSpan()
+            LastModifyAfter = DateTime.Now.AddMinutes(-1)
         };
         _ = await MockFileAsync(_srcDir);
 

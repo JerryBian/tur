@@ -34,7 +34,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
         Assert.True(!Directory.GetDirectories(_dir).Any());
     }
@@ -52,7 +52,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
         Assert.Equal(2, Directory.GetDirectories(_dir).Length);
     }
@@ -70,7 +70,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
         Assert.Empty(Directory.GetDirectories(_dir));
     }
@@ -93,7 +93,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
         Assert.Equal(2, Directory.GetDirectories(_dir).Length);
     }
@@ -117,7 +117,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
         _ = Assert.Single(Directory.GetDirectories(_dir));
     }
@@ -135,7 +135,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir, "*", SearchOption.AllDirectories));
         _ = Assert.Single(Directory.GetDirectories(_dir, "*", SearchOption.AllDirectories));
     }
@@ -146,7 +146,7 @@ public class RmHandlerTest : TestBase
         _option.Destination = GetRandomName();
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir, "*", SearchOption.AllDirectories));
         Assert.Equal(2, Directory.GetDirectories(_dir, "*", SearchOption.AllDirectories).Length);
     }
@@ -175,7 +175,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(0, exitCode);
+        Assert.Equal(1, exitCode);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
         _ = Assert.Single(Directory.GetDirectories(_dir));
         Assert.False(Directory.Exists(dir2));
@@ -218,7 +218,7 @@ public class RmHandlerTest : TestBase
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         Assert.False(Directory.Exists(_dir));
     }
 

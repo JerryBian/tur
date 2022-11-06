@@ -275,9 +275,9 @@ public class RmHandler : HandlerBase
         catch (Exception ex)
         {
             await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
-            return 0;
+            return 1;
         }
 
-        return 1;
+        return 0;
     }
 }

@@ -49,13 +49,13 @@ Arguments:
   <dir>  The target directory to analysis.
 
 Options:
-  -i, --include <include>  Glob patterns for included files.
-  -e, --exclude <exclude>  Glob patterns for excluded files.
-  -o, --output <output>    The output directory for logs or any file generated during processing.
-  -v, --verbose            Display detailed logs.
-  --minT                   Min modify timespam filter(long type,second level).
-  --maxT                   Max modify timespam filter(long type,second level).
-  -?, -h, --help           Show help and usage information
+  -i, --include <include>                    Glob patterns for included files.
+  -e, --exclude <exclude>                    Glob patterns for excluded files.
+  -o, --output <output>                      The output directory for logs or any file generated during processing.
+  -v, --verbose                              Display detailed logs.
+  --last-modify-after <last-modify-after>    Last modify after filter. e.g., 2022-10-01T10:20:21
+  --last-modify-before <last-modify-before>  Last modify before fitler. e.g., 2022-08-02T16:20:21
+  -?, -h, --help                             Show help and usage information
 ```
 
 ### `sync`
@@ -73,16 +73,16 @@ Arguments:
   <dest>  The Destination directory.
 
 Options:
-  -i, --include <include>  Glob patterns for included files.
-  -e, --exclude <exclude>  Glob patterns for excluded files.
-  -o, --output <output>    The output directory for logs or any file generated during processing.
-  -v, --verbose            Display detailed logs.
-  -n, --dry-run            Perform a trial run with no changes made.
-  -d, --delete             Delete extraneous files from destination directory.
-  --size-only              Skip files that match in both name and size.
-  --minT                   Min modify timespam filter(long type,second level).
-  --maxT                   Max modify timespam filter(long type,second level).
-  -?, -h, --help           Show help and usage information
+  -i, --include <include>                    Glob patterns for included files.
+  -e, --exclude <exclude>                    Glob patterns for excluded files.
+  -o, --output <output>                      The output directory for logs or any file generated during processing.
+  -v, --verbose                              Display detailed logs.
+  --last-modify-after <last-modify-after>    Last modify after filter. e.g., 2022-10-01T10:20:21
+  --last-modify-before <last-modify-before>  Last modify before fitler. e.g., 2022-08-02T16:20:21
+  -n, --dry-run                              Perform a trial run with no changes made.
+  -d, --delete                               Delete extraneous files from destination directory.
+  --size-only                                Skip files that match in both name and size.
+  -?, -h, --help                             Show help and usage information
 ```
 
 ### `rm`
@@ -99,18 +99,18 @@ Arguments:
   <dest>  The destination directory.
 
 Options:
-  -i, --include <include>  Glob patterns for included files.
-  -e, --exclude <exclude>  Glob patterns for excluded files.
-  -o, --output <output>    The output directory for logs or any file generated during processing.
-  -v, --verbose            Display detailed logs.
-  -y, --yes                Perform deletion without confirmation.
-  -f, --file               Delete files only.
-  -d, --dir                Delete directories only.
-  --empty-dir              Delete all empty directories.
-  --from-file <from-file>  Delete all files/directories listed in specified file.
-  --minT                   Min modify timespam filter(long type,second level).
-  --maxT                   Max modify timespam filter(long type,second level).
-  -?, -h, --help           Show help and usage information
+  -i, --include <include>                    Glob patterns for included files.
+  -e, --exclude <exclude>                    Glob patterns for excluded files.
+  -o, --output <output>                      The output directory for logs or any file generated during processing.
+  -v, --verbose                              Display detailed logs.
+  --last-modify-after <last-modify-after>    Last modify after filter. e.g., 2022-10-01T10:20:21
+  --last-modify-before <last-modify-before>  Last modify before fitler. e.g., 2022-08-02T16:20:21
+  -y, --yes                                  Perform deletion without confirmation.
+  -f, --file                                 Delete files only.
+  -d, --dir                                  Delete directories only.
+  --empty-dir                                Delete all empty directories.
+  --from-file <from-file>                    Delete all files/directories listed in specified file.
+  -?, -h, --help                             Show help and usage information
 ```
 
 ## Misc

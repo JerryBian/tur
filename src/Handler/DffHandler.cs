@@ -52,10 +52,10 @@ public class DffHandler : HandlerBase
         catch (Exception ex)
         {
             await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
-            return 0;
+            return 1;
         }
 
-        return 1;
+        return 0;
     }
 
     private async Task ProcessGroupAsync(int i, Dictionary<long, List<string>> groupedItems)

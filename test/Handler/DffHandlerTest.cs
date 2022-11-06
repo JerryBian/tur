@@ -30,7 +30,7 @@ public class DffHandlerTest : TestBase
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
         Assert.Null(_option.ExportedList);
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class DffHandlerTest : TestBase
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
         Assert.Null(_option.ExportedList);
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class DffHandlerTest : TestBase
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
         Assert.NotNull(_option.ExportedList);
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         _ = Assert.Single(_option.ExportedList);
         Assert.Equal(2, _option.ExportedList[0].Count);
         Assert.Contains(Path.Combine(_dir, folder1, file1), _option.ExportedList[0]);
@@ -74,7 +74,7 @@ public class DffHandlerTest : TestBase
         _option.Dir = Path.GetRandomFileName();
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
-        Assert.Equal(1, exitCode);
+        Assert.Equal(0, exitCode);
         Assert.False(Directory.GetFiles(_dir, "*.txt").Any());
     }
 

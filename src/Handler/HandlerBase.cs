@@ -61,12 +61,18 @@ public abstract class HandlerBase : IAsyncDisposable
     {
         if (!Directory.Exists(dir))
         {
-            return Enumerable.Empty<string>();
+            yield break;
         }
 
-        IEnumerable<string> files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories);
-        if (applyFilter)
+        foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
         {
+            string relativePath = Path.GetRelativePath(dir, f);
+
+            if (!applyFilter)
+            {
+                yield return returnAbsolutePath ? f : relativePath;
+            }
+
             Matcher matcher = new();
             if (_option.Includes is not { Length: > 0 })
             {
@@ -88,31 +94,26 @@ public abstract class HandlerBase : IAsyncDisposable
                 }
             }
 
-            PatternMatchingResult matchResult = matcher.Match(dir, files);
-
-            IEnumerable<FilePatternMatch> matchFiles = matchResult.Files;
-
-            if (_option.MinModifyTimeSpam != 0 || _option.MaxModifyTimeSpam != 0)
+            PatternMatchingResult matchResult = matcher.Match(dir, f);
+            if (matchResult.HasMatches)
             {
-                DateTime minDate = _option.MinModifyTimeSpam == 0 ? DateTime.MinValue : _option.MinModifyTimeSpam.ToDateTime();
-                DateTime maxDate = _option.MaxModifyTimeSpam == 0 ? DateTime.MaxValue : _option.MaxModifyTimeSpam.ToDateTime();
-                matchFiles = matchFiles.Where((f) =>
+                DateTime lastModifyAfter = _option.LastModifyAfter != default ? _option.LastModifyAfter : DateTime.MinValue;
+                DateTime lastModifyBefore = _option.LastModifyBefore != default ? _option.LastModifyBefore : DateTime.MaxValue;
+
+                if (lastModifyAfter != default || lastModifyBefore != default)
                 {
-                    FileInfo fileInfo = new(Path.Combine(dir, f.Path));
-                    return fileInfo.Exists && fileInfo.LastWriteTime >= minDate && fileInfo.LastWriteTime <= maxDate;
-                });
+                    DateTime fileLastModify = File.GetLastWriteTime(f);
+                    if (fileLastModify >= lastModifyAfter && fileLastModify <= lastModifyBefore)
+                    {
+                        yield return returnAbsolutePath ? f : relativePath;
+                    }
+                }
+                else
+                {
+                    yield return returnAbsolutePath ? f : relativePath;
+                }
             }
-
-            if (returnAbsolutePath)
-            {
-                return matchFiles.Select(x => Path.Combine(dir, x.Path));
-            }
-
-            return matchFiles.Select(x =>
-                Path.GetRelativePath(dir, Path.Combine(dir, x.Path))); // Matcher returns non cross platform separator
         }
-
-        return returnAbsolutePath ? files : files.Select(x => Path.GetRelativePath(dir, x));
     }
 
     protected async Task CopyAsync(string srcFile, string destFile, Func<int, double, Task> progressChanged)

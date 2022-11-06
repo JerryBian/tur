@@ -19,7 +19,7 @@ public class RmHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new RmOption(null, null, null, true, Array.Empty<string>()) { Yes = true };
+        _option = new RmOption(Array.Empty<string>()) { Yes = true, EnableVerbose = true };
     }
 
     [Fact]

@@ -19,7 +19,7 @@ public class DffHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new DffOption(null, null, null, true, Array.Empty<string>()) { Dir = _dir };
+        _option = new DffOption(Array.Empty<string>()) { Dir = _dir, EnableVerbose = true };
     }
 
     [Fact]

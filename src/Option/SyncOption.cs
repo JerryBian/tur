@@ -2,8 +2,7 @@
 
 public class SyncOption : OptionBase
 {
-    public SyncOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose,
-        string[] args) : base(outputDir, includes, excludes, enableVerbose, args, "sync")
+    public SyncOption(string[] args) : base(args, "sync")
     {
     }
 
@@ -16,4 +15,8 @@ public class SyncOption : OptionBase
     public string DestDir { get; set; }
 
     public bool SizeOnly { get; set; }
+
+    public bool PreserveCreateTime { get; set; }
+
+    public bool PreserveLastModifyTime { get; set; }
 }

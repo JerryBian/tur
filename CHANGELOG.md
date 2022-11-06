@@ -1,5 +1,17 @@
 Listed change logs for release history.
 
+### 4.2.0
+
+Global options:
+
+- `--create-before`
+- `--create-after`
+
+`Sync` command:
+
+- `--preserve-last-modify`
+- `--preserve-create`
+
 ### 4.1.0
 
 Rename global option for last modify filter.

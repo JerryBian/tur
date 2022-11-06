@@ -98,6 +98,25 @@ public class SyncHandler : HandlerBase
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 await CopyAsync(srcFile, destFile, async (p, s) =>
                 {
+                    if (_option.PreserveCreateTime)
+                    {
+                        File.SetCreationTime(destFile, File.GetCreationTime(srcFile));
+                    }
+                    else
+                    {
+                        File.SetCreationTime(destFile, DateTime.Now);
+                    }
+
+                    if (_option.PreserveLastModifyTime)
+                    {
+                        File.SetLastWriteTime(destFile, File.GetLastWriteTime(srcFile));
+                    }
+                    else
+                    {
+                        File.SetLastWriteTime(destFile, DateTime.Now);
+                    }
+
+                    File.SetLastAccessTime(destFile, DateTime.Now);
                     if (!AppUtil.HasMainWindow)
                     {
                         return;

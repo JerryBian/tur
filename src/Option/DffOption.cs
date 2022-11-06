@@ -4,8 +4,7 @@ namespace Tur.Option;
 
 public class DffOption : OptionBase
 {
-    public DffOption(string outputDir, string[] includes, string[] excludes, bool enableVerbose,
-        string[] args) : base(outputDir, includes, excludes, enableVerbose, args, "dff")
+    public DffOption(string[] args) : base(args, "dff")
     {
     }
 

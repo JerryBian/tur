@@ -30,6 +30,11 @@ public abstract class HandlerBase : IAsyncDisposable
         _option = option;
         CancellationToken = cancellationToken;
 
+        if (string.IsNullOrEmpty(option.OutputDir))
+        {
+            option.OutputDir = Path.GetTempPath();
+        }
+
         _logFile = Path.Combine(option.OutputDir,
             $"tur-{option.CmdName}-{GetRandomFile()}.log");
 

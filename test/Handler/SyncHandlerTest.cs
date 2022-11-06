@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Tur.Handler;
@@ -37,7 +38,7 @@ public class SyncHandlerTest : TestBase
     {
         _ = await MockDirAsync(_srcDir, 1, 1, 0, 128);
 
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir
@@ -56,7 +57,7 @@ public class SyncHandlerTest : TestBase
     {
         _ = await MockDirAsync(_srcDir, 2, 2, 2, 128);
 
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir
@@ -79,10 +80,12 @@ public class SyncHandlerTest : TestBase
         _ = await MockFileAsync(dirTree.SubDirTrees[0].FullPath, fileName: "1.go");
         _ = await MockFileAsync(dirTree.SubDirTrees[0].SubDirTrees[2].FullPath, fileName: "2.js");
 
-        SyncOption option = new(null, new[] { "**/*.go" }, new[] { "**/*.js" }, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
-            DestDir = _destDir
+            DestDir = _destDir,
+            Includes = new[] { "**/*.go" },
+            Excludes = new[] { "**/*.js" }
         };
 
         await using SyncHandler handler = new(option, CancellationToken.None);
@@ -103,11 +106,13 @@ public class SyncHandlerTest : TestBase
         _ = MockSubDir(Path.Combine(_destDir, "__1", "__2"));
         _ = await MockFileAsync(Path.Combine(_destDir, "1_2"));
 
-        SyncOption option = new(null, new[] { "**/*.go" }, new[] { "**/*.js" }, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            Delete = true
+            Delete = true,
+            Includes = new[] { "**/*.go" },
+            Excludes = new[] { "**/*.js" }
         };
 
         await using SyncHandler handler = new(option, CancellationToken.None);
@@ -129,12 +134,14 @@ public class SyncHandlerTest : TestBase
         _ = await MockFileAsync(Path.Combine(_destDir, "1_2"));
         _ = await MockFileAsync(Path.Combine(_destDir, "3_4"));
 
-        SyncOption option = new(null, new[] { "**/*.go" }, new[] { "**/*.js" }, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
             Delete = true,
-            DryRun = true
+            DryRun = true,
+            Includes = new[] { "**/*.go" },
+            Excludes = new[] { "**/*.js" }
         };
 
         await using SyncHandler handler = new(option, CancellationToken.None);
@@ -149,7 +156,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_6()
     {
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
@@ -165,7 +172,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_7()
     {
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
@@ -182,7 +189,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_8()
     {
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
@@ -198,7 +205,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_9()
     {
-        SyncOption option = new(null, null, null, false, Array.Empty<string>())
+        SyncOption option = new(Array.Empty<string>())
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
@@ -210,5 +217,53 @@ public class SyncHandlerTest : TestBase
         _ = await handler.HandleAsync();
         Assert.True(Directory.Exists(_destDir));
         _ = Assert.Single(Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task Test_Case_10()
+    {
+        SyncOption option = new(Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir
+        };
+        _ = await MockFileAsync(_srcDir);
+        await Task.Delay(1000);
+
+        await using SyncHandler handler = new(option, CancellationToken.None);
+        _ = await handler.HandleAsync();
+        Assert.True(Directory.Exists(_destDir));
+        string[] destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
+        _ = Assert.Single(destFiles);
+        string destFile = destFiles.First();
+        string srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
+        Assert.NotEqual(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
+        Assert.NotEqual(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
+        Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));
+    }
+
+    [Fact]
+    public async Task Test_Case_11()
+    {
+        SyncOption option = new(Array.Empty<string>())
+        {
+            SrcDir = _srcDir,
+            DestDir = _destDir,
+            PreserveCreateTime = true,
+            PreserveLastModifyTime = true
+        };
+        _ = await MockFileAsync(_srcDir);
+        await Task.Delay(1000);
+
+        await using SyncHandler handler = new(option, CancellationToken.None);
+        _ = await handler.HandleAsync();
+        Assert.True(Directory.Exists(_destDir));
+        string[] destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
+        _ = Assert.Single(destFiles);
+        string destFile = destFiles.First();
+        string srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
+        Assert.Equal(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
+        Assert.Equal(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
+        Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));
     }
 }

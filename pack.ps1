@@ -8,7 +8,7 @@ param (
 )
 
 $OutputPath="./nupkg/$Version"
-dotnet pack src/Tur.csproj -c Release --include-source --include-symbols --output $OutputPath -p:Version=$Version -p:PackageVersion=$Version
+dotnet pack src/Tur.csproj -c Release --include-source --include-symbols -r win-x64 --output $OutputPath -p:Version=$Version -p:PackageVersion=$Version
 
 $PkgPath="$OutputPath/tur.$Version.nupkg"
 if (!(Test-Path $PkgPath)){

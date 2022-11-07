@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 4.3.0
+
+Publish binary as Read To Run.
+
 ### 4.2.0
 
 Global options:

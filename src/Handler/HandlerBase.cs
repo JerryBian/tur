@@ -102,18 +102,36 @@ public abstract class HandlerBase : IAsyncDisposable
             PatternMatchingResult matchResult = matcher.Match(dir, f);
             if (matchResult.HasMatches)
             {
-                DateTime lastModifyAfter = _option.LastModifyAfter != default ? _option.LastModifyAfter : DateTime.MinValue;
-                DateTime lastModifyBefore = _option.LastModifyBefore != default ? _option.LastModifyBefore : DateTime.MaxValue;
-
-                if (lastModifyAfter != default || lastModifyBefore != default)
+                bool flag;
+                if (_option.LastModifyAfter == default &&
+                    _option.LastModifyBefore == default &&
+                    _option.CreateBefore == default &&
+                    _option.CreateAfter == default)
                 {
-                    DateTime fileLastModify = File.GetLastWriteTime(f);
-                    if (fileLastModify >= lastModifyAfter && fileLastModify <= lastModifyBefore)
-                    {
-                        yield return returnAbsolutePath ? f : relativePath;
-                    }
+                    flag = true;
                 }
                 else
+                {
+                    flag = true;
+
+                    if (_option.LastModifyBefore != default || _option.LastModifyAfter != default)
+                    {
+                        DateTime fileLastModify = File.GetLastWriteTime(f);
+                        DateTime lastModifyAfter = _option.LastModifyAfter != default ? _option.LastModifyAfter : DateTime.MinValue;
+                        DateTime lastModifyBefore = _option.LastModifyBefore != default ? _option.LastModifyBefore : DateTime.MaxValue;
+                        flag = fileLastModify >= lastModifyAfter && fileLastModify <= lastModifyBefore;
+                    }
+
+                    if (flag && (_option.CreateAfter != default || _option.CreateBefore != default))
+                    {
+                        var fileCreateAt = File.GetCreationTime(f);
+                        var createAfter = _option.CreateAfter != default ? _option.CreateAfter : DateTime.MinValue;
+                        var createBefore = _option.CreateBefore != default ? _option.CreateBefore : DateTime.MaxValue;
+                        flag = fileCreateAt >= createAfter && fileCreateAt <= createBefore;
+                    }
+                }
+
+                if(flag)
                 {
                     yield return returnAbsolutePath ? f : relativePath;
                 }

@@ -160,7 +160,7 @@ public class SyncHandlerTest : TestBase
         {
             SrcDir = _srcDir,
             DestDir = _destDir,
-            LastModifyBefore = DateTime.Now.AddMinutes(-1)
+            LastModifyBefore = DateTime.Now.AddMinutes(-10)
         };
         _ = await MockFileAsync(_srcDir);
 

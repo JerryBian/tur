@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tur", "src\Tur.csproj", "{669E29AD-4717-4D97-840D-422714109779}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tur.Test", "test\Tur.Test.csproj", "{30A7CCC4-883C-4DD5-8FDD-7B8678E4E942}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tur.Test", "test\Tur.Test.csproj", "{30A7CCC4-883C-4DD5-8FDD-7B8678E4E942}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

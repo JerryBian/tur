@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 4.3.0
+
+Bump version to publish new Nuget package.
+
 ### 4.2.0
 
 Global options:

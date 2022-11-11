@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 4.4.0
+
+Upgrade to .NET 7
+
 ### 4.3.0
 
 Bump version to publish new Nuget package.

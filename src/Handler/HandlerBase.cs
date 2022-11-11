@@ -131,7 +131,7 @@ public abstract class HandlerBase : IAsyncDisposable
                     }
                 }
 
-                if(flag)
+                if (flag)
                 {
                     yield return returnAbsolutePath ? f : relativePath;
                 }

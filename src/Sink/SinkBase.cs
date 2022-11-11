@@ -15,7 +15,7 @@ public abstract class SinkBase : ITurSink
     {
         _option = option;
         _messageQueue = new BlockingCollection<SinkEntry>(1024);
-        _workerTask = Task.Run(async () => await ProcessMessageAsync());
+        _workerTask = Task.Run(ProcessMessageAsync);
     }
 
     public async ValueTask DisposeAsync()

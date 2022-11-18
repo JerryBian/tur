@@ -125,14 +125,28 @@ public class RmHandler : HandlerBase
         foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
-            if (File.Exists(entry.FullPath))
-            {
-                File.Delete(entry.FullPath);
-            }
 
-            await AggregateOutputSink.LightAsync("[");
-            await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-            await AggregateOutputSink.LightLineAsync("]");
+            try
+            {
+                if (File.Exists(entry.FullPath))
+                {
+                    File.Delete(entry.FullPath);
+                }
+
+                await AggregateOutputSink.LightAsync("[");
+                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+                await AggregateOutputSink.LightLineAsync("]");
+            }
+            catch (Exception ex)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw;
+                }
+
+                await ConsoleSink.WarnAsync($"Deleting file [{entry.FullPath}] failed, operation skipped.");
+                await LogFileSink.WarnAsync($"Deleting file [{entry.FullPath}] failed, operation skipped. Error={ex}");
+            }
         }
 
         await AggregateOutputSink.DefaultLineAsync(
@@ -177,14 +191,28 @@ public class RmHandler : HandlerBase
         foreach (ItemEntry entry in entries)
         {
             await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
-            if (Directory.Exists(entry.FullPath))
-            {
-                Directory.Delete(entry.FullPath, true);
-            }
 
-            await AggregateOutputSink.LightAsync("[");
-            await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-            await AggregateOutputSink.LightLineAsync("]");
+            try
+            {
+                if (Directory.Exists(entry.FullPath))
+                {
+                    Directory.Delete(entry.FullPath, true);
+                }
+
+                await AggregateOutputSink.LightAsync("[");
+                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+                await AggregateOutputSink.LightLineAsync("]");
+            }
+            catch (Exception ex)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw;
+                }
+
+                await ConsoleSink.WarnAsync($"Deleting directory [{entry.FullPath}] failed, operation skipped.");
+                await LogFileSink.WarnAsync($"Deleting directory [{entry.FullPath}] failed, operation skipped. Error={ex}");
+            }
         }
 
         await AggregateOutputSink.DefaultLineAsync(
@@ -236,14 +264,29 @@ public class RmHandler : HandlerBase
             {
                 await AggregateOutputSink.LightAsync(
                     $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)} ");
-                if (Directory.Exists(emptyDir))
+
+                try
                 {
-                    Directory.Delete(emptyDir, true);
+                    if (Directory.Exists(emptyDir))
+                    {
+                        Directory.Delete(emptyDir, true);
+                    }
+
+                    await AggregateOutputSink.LightAsync("[");
+                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
+                    await AggregateOutputSink.LightLineAsync("]");
+                }
+                catch (Exception ex)
+                {
+                    if (!_option.IgnoreError)
+                    {
+                        throw;
+                    }
+
+                    await ConsoleSink.WarnAsync($"Deleting empty directory [{emptyDir}] failed, operation skipped.");
+                    await LogFileSink.WarnAsync($"Deleting empty directory [{emptyDir}] failed, operation skipped. Error={ex}");
                 }
 
-                await AggregateOutputSink.LightAsync("[");
-                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                await AggregateOutputSink.LightLineAsync("]");
             }
         }
 

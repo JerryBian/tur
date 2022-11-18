@@ -60,6 +60,9 @@ public class MainService
         Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
+        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        cmd.AddOption(ignoreOption);
+
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -77,6 +80,7 @@ public class MainService
             DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
             DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
             DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
+            bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -94,7 +98,8 @@ public class MainService
                 EnableVerbose = enableVerbose,
                 OutputDir = output,
                 Includes = includes,
-                Excludes = excludes
+                Excludes = excludes,
+                IgnoreError = ignoreError
             };
 
             await using DffHandler handler = new(option, context.GetCancellationToken());
@@ -173,6 +178,9 @@ public class MainService
         Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
+        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        cmd.AddOption(ignoreOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -189,6 +197,7 @@ public class MainService
                 DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
                 DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
+                bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -212,7 +221,8 @@ public class MainService
                     EnableVerbose = enableVerbose,
                     OutputDir = output,
                     Includes = includes,
-                    Excludes = excludes
+                    Excludes = excludes,
+                    IgnoreError = ignoreError
                 };
 
                 await using RmHandler handler = new(option, context.GetCancellationToken());
@@ -296,6 +306,9 @@ public class MainService
         };
         cmd.AddOption(preserveLastModifyOption);
 
+        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        cmd.AddOption(ignoreOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -313,6 +326,7 @@ public class MainService
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 bool preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
                 bool preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
+                bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -337,7 +351,8 @@ public class MainService
                     EnableVerbose = enableVerbose,
                     OutputDir = output,
                     Includes = includes,
-                    Excludes = excludes
+                    Excludes = excludes,
+                    IgnoreError = ignoreError
                 };
 
                 await using SyncHandler handler = new(option, context.GetCancellationToken());
@@ -416,6 +431,15 @@ public class MainService
     private Option<DateTime> CreateCreateBeforeOption()
     {
         return new Option<DateTime>(new[] { "--create-before" }, "Create time before fitler. e.g., 2022-12-02T16:20:21")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private Option<bool> CreateIgnoreErrorOption()
+    {
+        return new Option<bool>(new[] { "--ignore-error" }, "Ignore error during file processing.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

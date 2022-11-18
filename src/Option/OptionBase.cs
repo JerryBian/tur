@@ -31,4 +31,6 @@ public abstract class OptionBase
     public string[] RawArgs { get; }
 
     public string CmdName { get; }
+
+    public bool IgnoreError { get; set; }
 }

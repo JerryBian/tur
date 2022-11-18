@@ -124,9 +124,9 @@ public abstract class HandlerBase : IAsyncDisposable
 
                     if (flag && (_option.CreateAfter != default || _option.CreateBefore != default))
                     {
-                        var fileCreateAt = File.GetCreationTime(f);
-                        var createAfter = _option.CreateAfter != default ? _option.CreateAfter : DateTime.MinValue;
-                        var createBefore = _option.CreateBefore != default ? _option.CreateBefore : DateTime.MaxValue;
+                        DateTime fileCreateAt = File.GetCreationTime(f);
+                        DateTime createAfter = _option.CreateAfter != default ? _option.CreateAfter : DateTime.MinValue;
+                        DateTime createBefore = _option.CreateBefore != default ? _option.CreateBefore : DateTime.MaxValue;
                         flag = fileCreateAt >= createAfter && fileCreateAt <= createBefore;
                     }
                 }
@@ -141,79 +141,106 @@ public abstract class HandlerBase : IAsyncDisposable
 
     protected async Task CopyAsync(string srcFile, string destFile, Func<int, double, Task> progressChanged)
     {
-        if (!File.Exists(srcFile))
+        try
         {
-            return;
+            if (!File.Exists(srcFile))
+            {
+                return;
+            }
+
+            string destDir = Path.GetDirectoryName(destFile);
+            if (!string.IsNullOrEmpty(destDir))
+            {
+                _ = Directory.CreateDirectory(destDir);
+            }
+
+            await using FileStream src = new(srcFile, FileMode.Open, FileAccess.Read);
+            long srcFileLength = src.Length;
+            byte[] buffer = new byte[Math.Min(_maxBytesScan, srcFileLength)];
+            await using FileStream dest = new(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+            dest.SetLength(0);
+            long bytesWritten = 0L;
+            int currentBlockSize;
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            while ((currentBlockSize = await src.ReadAsync(buffer, 0, buffer.Length, CancellationToken)) > 0)
+            {
+                await dest.WriteAsync(buffer, 0, currentBlockSize, CancellationToken);
+                stopwatch.Stop();
+                bytesWritten += currentBlockSize;
+                await progressChanged(Convert.ToInt32(bytesWritten / (double)srcFileLength * 100),
+                    (double)currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
+                stopwatch.Restart();
+            }
         }
-
-        string destDir = Path.GetDirectoryName(destFile);
-        if (!string.IsNullOrEmpty(destDir))
+        catch (Exception ex)
         {
-            _ = Directory.CreateDirectory(destDir);
-        }
+            if (!_option.IgnoreError)
+            {
+                throw;
+            }
 
-        await using FileStream src = new(srcFile, FileMode.Open, FileAccess.Read);
-        long srcFileLength = src.Length;
-        byte[] buffer = new byte[Math.Min(_maxBytesScan, srcFileLength)];
-        await using FileStream dest = new(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        dest.SetLength(0);
-        long bytesWritten = 0L;
-        int currentBlockSize;
-
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        while ((currentBlockSize = await src.ReadAsync(buffer, 0, buffer.Length, CancellationToken)) > 0)
-        {
-            await dest.WriteAsync(buffer, 0, currentBlockSize, CancellationToken);
-            stopwatch.Stop();
-            bytesWritten += currentBlockSize;
-            await progressChanged(Convert.ToInt32(bytesWritten / (double)srcFileLength * 100),
-                (double)currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
-            stopwatch.Restart();
+            await ConsoleSink.WarnAsync($"Copying [{srcFile}] to [{destFile}] failed, operation skipped.");
+            await LogFileSink.WarnAsync($"Copying [{srcFile}] to [{destFile}] failed, operation skipped. Error={ex}");
         }
     }
 
     protected async Task<bool> IsSameFileAsync(string file1, string file2)
     {
-        if (string.Equals(file1, file2))
+        try
         {
+            if (string.Equals(file1, file2))
+            {
+                return true;
+            }
+
+            FileInfo fileInfo1 = new(file1);
+            FileInfo fileInfo2 = new(file2);
+            if (fileInfo1.Length != fileInfo2.Length)
+            {
+                return false;
+            }
+
+            int maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
+            int iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
+            await using FileStream f1 = fileInfo1.OpenRead();
+            await using FileStream f2 = fileInfo2.OpenRead();
+            byte[] first = new byte[maxBytesScan];
+            byte[] second = new byte[maxBytesScan];
+
+            for (int i = 0; i < iterations; i++)
+            {
+                if (CancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                int firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken);
+                int secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken);
+                if (firstBytes != secondBytes)
+                {
+                    return false;
+                }
+
+                if (!AreBytesEqual(first, second))
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
-
-        FileInfo fileInfo1 = new(file1);
-        FileInfo fileInfo2 = new(file2);
-        if (fileInfo1.Length != fileInfo2.Length)
+        catch (Exception ex)
         {
+            if (!_option.IgnoreError)
+            {
+                throw;
+            }
+
+            await ConsoleSink.WarnAsync($"Comparing [{file1}] with [{file2}] failed, the match result is marked as false.");
+            await LogFileSink.WarnAsync($"Comparing [{file1}] with [{file2}] failed, the match result is marked as false. Error={ex}");
             return false;
         }
-
-        int maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
-        int iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
-        await using FileStream f1 = fileInfo1.OpenRead();
-        await using FileStream f2 = fileInfo2.OpenRead();
-        byte[] first = new byte[maxBytesScan];
-        byte[] second = new byte[maxBytesScan];
-
-        for (int i = 0; i < iterations; i++)
-        {
-            if (CancellationToken.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            int firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken);
-            int secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken);
-            if (firstBytes != secondBytes)
-            {
-                return false;
-            }
-
-            if (!AreBytesEqual(first, second))
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private bool AreBytesEqual(ReadOnlySpan<byte> b1, ReadOnlySpan<byte> b2)

@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+### 4.5.0
+
+Add `--ignore-error` option.
+
 ### 4.4.0
 
 Upgrade to .NET 7

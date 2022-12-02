@@ -88,7 +88,13 @@ public class SyncHandler : HandlerBase
                 }
             }
 
-            int cursorTop = Console.CursorTop;
+            int cursorTop = -1;
+            try
+            {
+                cursorTop = Console.CursorTop;
+            }
+            catch { }
+
             await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
             if (_option.DryRun)
             {

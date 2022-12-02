@@ -140,14 +140,14 @@ public abstract class SinkBase : ITurSink
         await EnqueueAsync(message, SinkType.ErrorLine, ex);
     }
 
-    public async Task ClearLineAsync(bool verboseOnly = false)
+    public async Task ClearLineAsync(bool verboseOnly = false, int cursorTop = -1)
     {
         if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
 
-        await EnqueueAsync(string.Empty, SinkType.ClearLine);
+        await EnqueueAsync(string.Empty, SinkType.ClearLine, state: cursorTop);
     }
 
     private async Task ProcessMessageAsync()
@@ -172,9 +172,9 @@ public abstract class SinkBase : ITurSink
         }
     }
 
-    private async Task EnqueueAsync(string message, SinkType type, Exception ex = null)
+    private async Task EnqueueAsync(string message, SinkType type, Exception ex = null, int state = -1)
     {
-        SinkEntry entry = new(message, type, ex);
+        SinkEntry entry = new(message, type, ex) { State = state };
         if (!_messageQueue.IsAddingCompleted)
         {
             try

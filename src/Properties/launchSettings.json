@@ -2,7 +2,7 @@
   "profiles": {
     "Tur": {
       "commandName": "Project",
-      "commandLineArgs": "sync --help"
+      "commandLineArgs": "sync \\\\stage\\20E3\\onecloud\\tddownload \\\\nas\\media\\stage\\_0 -v --size-only"
     }
   }
 }

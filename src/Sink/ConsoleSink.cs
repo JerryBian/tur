@@ -92,10 +92,23 @@ public class ConsoleSink : SinkBase
 
         if (entry.Type == SinkType.ClearLine && !SinkOption.NoConsole)
         {
+            var width = Console.BufferWidth;
             int lineCursor = Console.CursorTop;
-            Console.SetCursorPosition(0, lineCursor);
-            Console.Write(new string(' ', Console.BufferWidth));
-            Console.SetCursorPosition(0, lineCursor);
+            if (entry.State >= 0)
+            {
+                for (var i = entry.State; i <= lineCursor; i++)
+                {
+                    Console.SetCursorPosition(0, i);
+                    Console.Write(new string(' ', width));
+                }
+            }
+            else
+            {
+                Console.SetCursorPosition(0, lineCursor);
+                Console.Write(new string(' ', width));
+            }
+
+            Console.SetCursorPosition(0, entry.State);
             return;
         }
 

@@ -16,4 +16,6 @@ public class SinkEntry
     public SinkType Type { get; set; }
 
     public Exception Exception { get; set; }
+
+    public int State { get; set; }
 }

@@ -83,7 +83,7 @@ public class AggregateSink : ITurSink
         await Task.WhenAll(_sinks.Select(x => x.ErrorLineAsync(message, verboseOnly).OkForCancel()));
     }
 
-    public async Task ClearLineAsync(bool verboseOnly = false)
+    public async Task ClearLineAsync(bool verboseOnly = false, int state = -1)
     {
         await Task.WhenAll(_sinks.Select(x => x.ClearLineAsync(verboseOnly).OkForCancel()));
     }

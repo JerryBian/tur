@@ -88,6 +88,7 @@ public class SyncHandler : HandlerBase
                 }
             }
 
+            int cursorTop = Console.CursorTop;
             await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
             if (_option.DryRun)
             {
@@ -96,6 +97,7 @@ public class SyncHandler : HandlerBase
             else
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
+
                 await CopyAsync(srcFile, destFile, async (p, s) =>
                 {
                     if (_option.PreserveCreateTime)
@@ -123,7 +125,7 @@ public class SyncHandler : HandlerBase
                     }
 
                     string line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s]";
-                    await ConsoleSink.ClearLineAsync(true);
+                    await ConsoleSink.ClearLineAsync(true, cursorTop);
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                     await ConsoleSink.InfoAsync(line, true);
                 }).OkForCancel();

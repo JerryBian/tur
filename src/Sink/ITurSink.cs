@@ -27,5 +27,5 @@ public interface ITurSink : IAsyncDisposable
 
     Task ErrorLineAsync(string message, bool verboseOnly = false, Exception ex = null);
 
-    Task ClearLineAsync(bool verboseOnly = false);
+    Task ClearLineAsync(bool verboseOnly = false, int cursorTop = -1);
 }

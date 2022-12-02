@@ -130,7 +130,7 @@ public class SyncHandler : HandlerBase
                         return;
                     }
 
-                    string line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s]";
+                    string line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s, {stopwatch.Elapsed.Human()}]";
                     await ConsoleSink.ClearLineAsync(true, cursorTop);
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                     await ConsoleSink.InfoAsync(line, true);
@@ -139,8 +139,8 @@ public class SyncHandler : HandlerBase
 
                 string line =
                     $"[{HumanUtil.GetSize(srcFileLength)}, {HumanUtil.GetRatesPerSecond(srcFileLength, stopwatch.Elapsed.TotalSeconds)}, {stopwatch.Elapsed.Human()}]";
-                await ConsoleSink.ClearLineAsync(true);
-                if (_option.NoConsole)
+                await ConsoleSink.ClearLineAsync(true, cursorTop);
+                if (!_option.NoConsole)
                 {
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                 }

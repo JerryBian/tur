@@ -163,14 +163,13 @@ public abstract class HandlerBase : IAsyncDisposable
             int currentBlockSize;
 
             Stopwatch stopwatch = Stopwatch.StartNew();
-            while ((currentBlockSize = await src.ReadAsync(buffer, 0, buffer.Length, CancellationToken)) > 0)
+            while ((currentBlockSize = await src.ReadAsync(buffer, CancellationToken)) > 0)
             {
                 await dest.WriteAsync(buffer, 0, currentBlockSize, CancellationToken);
-                stopwatch.Stop();
                 bytesWritten += currentBlockSize;
+                
                 await progressChanged(Convert.ToInt32(bytesWritten / (double)srcFileLength * 100),
-                    (double)currentBlockSize * 2 / stopwatch.Elapsed.TotalSeconds);
-                stopwatch.Restart();
+                    bytesWritten / stopwatch.Elapsed.TotalSeconds);
             }
         }
         catch (Exception ex)

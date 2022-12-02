@@ -108,7 +108,8 @@ public class ConsoleSink : SinkBase
                 Console.Write(new string(' ', width));
             }
 
-            Console.SetCursorPosition(0, entry.State);
+            var cursorTop = entry.State >= 0 ? entry.State : lineCursor;
+            Console.SetCursorPosition(0, cursorTop);
             return;
         }
 

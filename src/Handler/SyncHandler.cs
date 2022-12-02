@@ -117,7 +117,7 @@ public class SyncHandler : HandlerBase
                     }
 
                     File.SetLastAccessTime(destFile, DateTime.Now);
-                    if (!AppUtil.HasMainWindow)
+                    if (_option.NoConsole)
                     {
                         return;
                     }
@@ -132,7 +132,7 @@ public class SyncHandler : HandlerBase
                 string line =
                     $"[{HumanUtil.GetSize(srcFileLength)}, {HumanUtil.GetRatesPerSecond(srcFileLength, stopwatch.Elapsed.TotalSeconds)}, {stopwatch.Elapsed.Human()}]";
                 await ConsoleSink.ClearLineAsync(true);
-                if (AppUtil.HasMainWindow)
+                if (_option.NoConsole)
                 {
                     await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                 }

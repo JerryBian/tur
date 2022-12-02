@@ -2,7 +2,6 @@
 using System.Text;
 using System.Threading.Tasks;
 using Tur.Option;
-using Tur.Util;
 
 namespace Tur.Sink;
 
@@ -91,7 +90,7 @@ public class ConsoleSink : SinkBase
             return;
         }
 
-        if (entry.Type == SinkType.ClearLine && AppUtil.HasMainWindow)
+        if (entry.Type == SinkType.ClearLine && !SinkOption.NoConsole)
         {
             int lineCursor = Console.CursorTop;
             Console.SetCursorPosition(0, lineCursor);

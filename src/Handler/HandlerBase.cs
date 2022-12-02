@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Tur.Extension;
 using Tur.Option;
 using Tur.Sink;
-using Tur.Util;
 
 namespace Tur.Handler;
 
@@ -306,8 +306,10 @@ public abstract class HandlerBase : IAsyncDisposable
 
     private async Task WriteLogFileHeaderAsync()
     {
+        Version version = Assembly.GetExecutingAssembly().GetName().Version;
+        string versionStr = version == null ? "1.0.0" : version.ToString(3);
         StringBuilder sb = new();
-        _ = sb.AppendLine($"### Processed by tur {AppUtil.AppVersion}");
+        _ = sb.AppendLine($"### Processed by tur {versionStr}");
         _ = sb.AppendLine($"### Command: tur {string.Join(" ", _option.RawArgs)}");
         _ = sb.AppendLine();
 

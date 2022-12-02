@@ -8,12 +8,12 @@ namespace Tur.Sink;
 public abstract class SinkBase : ITurSink
 {
     private readonly BlockingCollection<SinkEntry> _messageQueue;
-    private readonly OptionBase _option;
+    protected readonly OptionBase SinkOption;
     private readonly Task _workerTask;
 
     protected SinkBase(OptionBase option)
     {
-        _option = option;
+        SinkOption = option;
         _messageQueue = new BlockingCollection<SinkEntry>(1024);
         _workerTask = Task.Run(ProcessMessageAsync);
     }
@@ -26,7 +26,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task NewLineAsync(bool verboseOnly = false, int count = 1)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -42,7 +42,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task DefaultAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -52,7 +52,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task DefaultLineAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -62,7 +62,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task LightAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -72,7 +72,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task LightLineAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -82,7 +82,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task InfoAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -92,7 +92,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task InfoLineAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -102,7 +102,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task WarnAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -112,7 +112,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task WarnLineAsync(string message, bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -122,7 +122,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task ErrorAsync(string message, bool verboseOnly = false, Exception ex = null)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -132,7 +132,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task ErrorLineAsync(string message, bool verboseOnly = false, Exception ex = null)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }
@@ -142,7 +142,7 @@ public abstract class SinkBase : ITurSink
 
     public async Task ClearLineAsync(bool verboseOnly = false)
     {
-        if (verboseOnly && !_option.EnableVerbose)
+        if (verboseOnly && !SinkOption.EnableVerbose)
         {
             return;
         }

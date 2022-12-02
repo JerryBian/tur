@@ -63,6 +63,9 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
+        Option<bool> noConsoleOption = CreateNoConsoleOption();
+        cmd.AddOption(noConsoleOption);
+
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -81,6 +84,7 @@ public class MainService
             DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
             DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
             bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+            bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -99,7 +103,8 @@ public class MainService
                 OutputDir = output,
                 Includes = includes,
                 Excludes = excludes,
-                IgnoreError = ignoreError
+                IgnoreError = ignoreError,
+                NoConsole = noConsole
             };
 
             await using DffHandler handler = new(option, context.GetCancellationToken());
@@ -181,6 +186,9 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
+        Option<bool> noConsoleOption = CreateNoConsoleOption();
+        cmd.AddOption(noConsoleOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -198,6 +206,7 @@ public class MainService
                 DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -222,7 +231,8 @@ public class MainService
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError
+                    IgnoreError = ignoreError,
+                    NoConsole = noConsole
                 };
 
                 await using RmHandler handler = new(option, context.GetCancellationToken());
@@ -309,6 +319,9 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
+        Option<bool> noConsoleOption = CreateNoConsoleOption();
+        cmd.AddOption(noConsoleOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -327,6 +340,7 @@ public class MainService
                 bool preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
                 bool preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -352,7 +366,8 @@ public class MainService
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError
+                    IgnoreError = ignoreError,
+                    NoConsole = noConsole
                 };
 
                 await using SyncHandler handler = new(option, context.GetCancellationToken());
@@ -443,6 +458,16 @@ public class MainService
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private Option<bool> CreateNoConsoleOption()
+    {
+        return new Option<bool>(new[] { "--no-console" }, "No console environment available.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            IsHidden = true
         };
     }
 }

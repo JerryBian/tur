@@ -35,4 +35,7 @@ public abstract class OptionBase
     public bool IgnoreError { get; set; }
 
     public bool NoConsole { get; set; }
+
+    public bool RedirectErrorToOutput { get; set; }
+
 }

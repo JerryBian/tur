@@ -66,6 +66,9 @@ public class MainService
         Option<bool> noConsoleOption = CreateNoConsoleOption();
         cmd.AddOption(noConsoleOption);
 
+        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
+        cmd.AddOption(redirectErrorToOutputOption);
+
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -85,6 +88,7 @@ public class MainService
             DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
             bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
             bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
+            bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -104,7 +108,8 @@ public class MainService
                 Includes = includes,
                 Excludes = excludes,
                 IgnoreError = ignoreError,
-                NoConsole = noConsole
+                NoConsole = noConsole,
+                RedirectErrorToOutput = redirectErrorToOutput
             };
 
             await using DffHandler handler = new(option, context.GetCancellationToken());
@@ -189,6 +194,9 @@ public class MainService
         Option<bool> noConsoleOption = CreateNoConsoleOption();
         cmd.AddOption(noConsoleOption);
 
+        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
+        cmd.AddOption(redirectErrorToOutputOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -207,6 +215,7 @@ public class MainService
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
                 bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
+                bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -232,7 +241,8 @@ public class MainService
                     Includes = includes,
                     Excludes = excludes,
                     IgnoreError = ignoreError,
-                    NoConsole = noConsole
+                    NoConsole = noConsole,
+                    RedirectErrorToOutput = redirectErrorToOutput
                 };
 
                 await using RmHandler handler = new(option, context.GetCancellationToken());
@@ -322,6 +332,9 @@ public class MainService
         Option<bool> noConsoleOption = CreateNoConsoleOption();
         cmd.AddOption(noConsoleOption);
 
+        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
+        cmd.AddOption(redirectErrorToOutputOption);
+
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
@@ -341,6 +354,7 @@ public class MainService
                 bool preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
                 bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
+                bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -367,7 +381,8 @@ public class MainService
                     Includes = includes,
                     Excludes = excludes,
                     IgnoreError = ignoreError,
-                    NoConsole = noConsole
+                    NoConsole = noConsole,
+                    RedirectErrorToOutput = redirectErrorToOutput
                 };
 
                 await using SyncHandler handler = new(option, context.GetCancellationToken());
@@ -464,6 +479,16 @@ public class MainService
     private Option<bool> CreateNoConsoleOption()
     {
         return new Option<bool>(new[] { "--no-console" }, "No console environment available.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            IsHidden = true
+        };
+    }
+
+    private Option<bool> CreateRedirectErrorToOutputOption()
+    {
+        return new Option<bool>(new[] { "--redirect-error-to-output" }, "Redirect error stream to output.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne,

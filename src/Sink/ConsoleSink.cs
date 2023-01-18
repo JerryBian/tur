@@ -77,7 +77,15 @@ public class ConsoleSink : SinkBase
         if (entry.Type == SinkType.Error)
         {
             Console.ForegroundColor = ConsoleColor.DarkRed;
-            await Console.Error.WriteAsync(entry.Message);
+            if(SinkOption.RedirectErrorToOutput)
+            {
+                await Console.Out.WriteAsync(entry.Message);
+            }
+            else
+            {
+                await Console.Error.WriteAsync(entry.Message);
+            }
+            
             Console.ResetColor();
             return;
         }
@@ -85,7 +93,15 @@ public class ConsoleSink : SinkBase
         if (entry.Type == SinkType.ErrorLine)
         {
             Console.ForegroundColor = ConsoleColor.DarkRed;
-            await Console.Error.WriteLineAsync(entry.Message);
+            if(SinkOption.RedirectErrorToOutput)
+            {
+                await Console.Out.WriteLineAsync(entry.Message);
+            }
+            else
+            {
+                await Console.Error.WriteLineAsync(entry.Message);
+            }
+            
             Console.ResetColor();
             return;
         }

@@ -68,6 +68,12 @@ public class RmHandler : HandlerBase
                 _option.Includes?.ToList(), 
                 _option.Excludes?.ToList()))
             {
+                if(file.HasError)
+                {
+                    await AggregateOutputSink.ErrorLineAsync($"{file.Error.Message} --> SKIP.", ex: file.Error);
+                    continue;
+                }
+
                 result.Add(new ItemEntry(file.FullPath, Path.GetRelativePath(_option.Destination, file.FullPath)));
             }
 

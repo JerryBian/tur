@@ -124,7 +124,7 @@ jobs:
           cd win-arm && sudo zip -r ../tur-win-arm.zip * && cd ..
           cd win-arm64 && sudo zip -r ../tur-win-arm64.zip * && cd ..
           cd osx-x64 && sudo zip -r ../tur-osx-x64.zip * && cd ..
-      - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
         name: Remove existing release for [${{ env.APP_VERSION }}]
         with:
           delete_release: true

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Tur.Model;
 using Tur.Option;
+using Tur.Util;
 
 namespace Tur.Handler;
 
@@ -61,9 +62,13 @@ public class RmHandler : HandlerBase
         {
             await AggregateOutputSink.DefaultLineAsync(
                 $"{Constants.ArrowUnicode} Looking for files on deletion ...", true);
-            foreach (string file in EnumerateFiles(_option.Destination, true, true))
+            foreach (var file in FileUtil.EnumerateFiles(
+                _option.Destination, 
+                _option.IgnoreError, 
+                _option.Includes?.ToList(), 
+                _option.Excludes?.ToList()))
             {
-                result.Add(new ItemEntry(file, Path.GetRelativePath(_option.Destination, file)));
+                result.Add(new ItemEntry(file.FullPath, Path.GetRelativePath(_option.Destination, file.FullPath)));
             }
 
             await AggregateOutputSink.DefaultLineAsync(
@@ -229,7 +234,7 @@ public class RmHandler : HandlerBase
 
         await AggregateOutputSink.DefaultLineAsync($"{Constants.ArrowUnicode} Cleanup empty directories started ...");
         List<string> emptyDirs = EnumerateDirectories(_option.Destination, returnAbsolutePath: true)
-            .Where(x => !EnumerateFiles(x).Any()).ToList();
+            .Where(x => !FileUtil.EnumerateFiles(x, _option.IgnoreError).Any()).ToList();
         if (emptyDirs.Any())
         {
             await AggregateOutputSink.DefaultAsync("    Following [", true);
@@ -291,7 +296,7 @@ public class RmHandler : HandlerBase
         }
 
         // Delete root destination if empty
-        if (!EnumerateFiles(_option.Destination).Any())
+        if (!FileUtil.EnumerateFiles(_option.Destination, _option.IgnoreError).Any())
         {
             Directory.Delete(_option.Destination, true);
         }

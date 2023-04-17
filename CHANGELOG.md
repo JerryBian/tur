@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+## 4.8
+
+- Ignore errors for `rm` command 
+
 ## 4.7
 
 - Add new option `--redirect-error-to-output`

@@ -11,4 +11,8 @@ public class Constants
     public const string CheckUnicode = "\u221A";
 
     public const string XUnicode = "\u0078";
+
+    public const int BoundedCapacity = 100;
+
+    public const int LogItemsCapacity = 1000;
 }

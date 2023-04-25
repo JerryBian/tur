@@ -9,7 +9,4 @@ public class DffOption : OptionBase
     }
 
     public string Dir { get; set; }
-
-    // Unit Tests only
-    public List<List<string>> ExportedList { get; set; }
 }

@@ -26,16 +26,9 @@ public abstract class OptionBase
 
     public DateTime CreateAfter { get; set; }
 
-    public bool EnableVerbose { get; set; }
-
     public string[] RawArgs { get; }
 
     public string CmdName { get; }
 
     public bool IgnoreError { get; set; }
-
-    public bool NoConsole { get; set; }
-
-    public bool RedirectErrorToOutput { get; set; }
-
 }

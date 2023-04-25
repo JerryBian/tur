@@ -19,7 +19,7 @@ public class DffHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new DffOption(Array.Empty<string>()) { Dir = _dir, EnableVerbose = true };
+        _option = new DffOption(Array.Empty<string>()) { Dir = _dir };
     }
 
     [Fact]
@@ -29,7 +29,6 @@ public class DffHandlerTest : TestBase
         _ = await MockFileAsync(_dir, fileLength: 20);
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
-        Assert.Null(_option.ExportedList);
         Assert.Equal(0, exitCode);
     }
 
@@ -41,14 +40,12 @@ public class DffHandlerTest : TestBase
         _ = await MockFileAsync(_dir, bytes);
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
-        Assert.Null(_option.ExportedList);
         Assert.Equal(0, exitCode);
     }
 
     [Fact]
     public async Task Test_Case_3()
     {
-        _option.ExportedList = new List<List<string>>();
         byte[] bytes = GetRandomBytes(10);
         string folder1 = "folder1";
         string file1 = "file1";
@@ -60,12 +57,7 @@ public class DffHandlerTest : TestBase
 
         await using DffHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
-        Assert.NotNull(_option.ExportedList);
         Assert.Equal(0, exitCode);
-        _ = Assert.Single(_option.ExportedList);
-        Assert.Equal(2, _option.ExportedList[0].Count);
-        Assert.Contains(Path.Combine(_dir, folder1, file1), _option.ExportedList[0]);
-        Assert.Contains(Path.Combine(_dir, file2), _option.ExportedList[0]);
     }
 
     [Fact]

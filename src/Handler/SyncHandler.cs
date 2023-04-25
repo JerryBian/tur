@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Tur.Extension;
+using Tur.Model;
 using Tur.Option;
 using Tur.Util;
 
@@ -24,134 +27,84 @@ public class SyncHandler : HandlerBase
         _option = option;
     }
 
-    private async Task CreateDestDirAsync()
-    {
-        await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-        await AggregateOutputSink.DefaultLineAsync("Creating directories in destination ... ");
-
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        foreach (string srcDir in EnumerateDirectories(_option.SrcDir))
-        {
-            if (CancellationToken.IsCancellationRequested)
-            {
-                continue;
-            }
-
-            string destDir = Path.Combine(_option.DestDir, srcDir);
-            if (!Directory.Exists(destDir))
-            {
-                await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [D] {srcDir} ", true);
-                if (_option.DryRun)
-                {
-                    await AggregateOutputSink.LightLineAsync("[Dry]", true);
-                }
-                else
-                {
-                    _ = Directory.CreateDirectory(destDir);
-                    await AggregateOutputSink.LightLineAsync($"[{Constants.CheckUnicode}]", true);
-                }
-            }
-        }
-
-        stopwatch.Stop();
-        await AggregateOutputSink.DefaultLineAsync(
-            $"  Finished destination directory creation. Elapsed: [{stopwatch.Elapsed.Human()}]");
-        await AggregateOutputSink.NewLineAsync();
-    }
-
     private async Task CopyFilesAsync()
     {
-        await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-        await AggregateOutputSink.DefaultLineAsync("Copying files from source to destination ... ");
+        LogItem logItem = new();
+        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem.AddSegment(LogSegmentLevel.Default, "Copying files from source to destination...");
+        logItem.AddLine();
+        AddLog(logItem);
 
-        Stopwatch sw = Stopwatch.StartNew();
-        foreach (string relativeSrcFile in EnumerateFiles(_option.SrcDir, true))
+        ActionBlock<FileSystemItem> copyBlock = new(async item =>
         {
-            if (CancellationToken.IsCancellationRequested)
-            {
-                continue;
-            }
+            Stopwatch sw = Stopwatch.StartNew();
+            string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
+            string destFullPath = Path.Combine(_option.DestDir, relativePath);
 
-            string srcFile = Path.Combine(_option.SrcDir, relativeSrcFile);
-            string destFile = Path.Combine(_option.DestDir, relativeSrcFile);
-            long srcFileLength = new FileInfo(srcFile).Length;
-            if (File.Exists(destFile))
+            if (File.Exists(destFullPath))
             {
-                if (_option.SizeOnly && srcFileLength == new FileInfo(destFile).Length)
+                if (item.Size == new FileInfo(destFullPath).Length)
                 {
-                    continue;
-                }
-
-                if (await IsSameFileAsync(srcFile, destFile))
-                {
-                    continue;
-                }
-            }
-
-            int cursorTop = -1;
-            try
-            {
-                cursorTop = Console.CursorTop;
-            }
-            catch { }
-
-            await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
-            if (_option.DryRun)
-            {
-                await AggregateOutputSink.LightLineAsync("[Dry]", true);
-            }
-            else
-            {
-                Stopwatch stopwatch = Stopwatch.StartNew();
-
-                await CopyAsync(srcFile, destFile, async (p, s) =>
-                {
-                    if (_option.PreserveCreateTime)
-                    {
-                        File.SetCreationTime(destFile, File.GetCreationTime(srcFile));
-                    }
-                    else
-                    {
-                        File.SetCreationTime(destFile, DateTime.Now);
-                    }
-
-                    if (_option.PreserveLastModifyTime)
-                    {
-                        File.SetLastWriteTime(destFile, File.GetLastWriteTime(srcFile));
-                    }
-                    else
-                    {
-                        File.SetLastWriteTime(destFile, DateTime.Now);
-                    }
-
-                    File.SetLastAccessTime(destFile, DateTime.Now);
-                    if (_option.NoConsole)
+                    if (_option.SizeOnly)
                     {
                         return;
                     }
-
-                    string line = $"[{HumanUtil.GetSize(srcFileLength)}, {p}%, {s.SizeHuman()}/s, {stopwatch.Elapsed.Human()}]";
-                    await ConsoleSink.ClearLineAsync(true, cursorTop);
-                    await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
-                    await ConsoleSink.InfoAsync(line, true);
-                }).OkForCancel();
-                stopwatch.Stop();
-
-                string line =
-                    $"[{HumanUtil.GetSize(srcFileLength)}, {HumanUtil.GetRatesPerSecond(srcFileLength, stopwatch.Elapsed.TotalSeconds)}, {stopwatch.Elapsed.Human()}]";
-                await ConsoleSink.ClearLineAsync(true, cursorTop);
-                if (!_option.NoConsole)
-                {
-                    await ConsoleSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeSrcFile} ", true);
                 }
 
-                await AggregateOutputSink.InfoLineAsync(line, true);
+                if (await FileUtil.IsSameFileAsync(item.FullPath, destFullPath, _option.IgnoreError))
+                {
+                    return;
+                }
             }
+
+            if (_option.DryRun)
+            {
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                AddLog(logItem);
+            }
+            else
+            {
+                string dir = Path.GetDirectoryName(destFullPath);
+                _ = Directory.CreateDirectory(dir);
+                File.Copy(item.FullPath, destFullPath, true);
+                File.SetCreationTime(destFullPath, _option.PreserveCreateTime ? item.CreateTime : DateTime.Now);
+                File.SetLastWriteTime(destFullPath, _option.PreserveLastModifyTime ? item.LastWriteTime : DateTime.Now);
+                File.SetLastAccessTime(destFullPath, DateTime.Now);
+
+                sw.Stop();
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                AddLog(logItem);
+            }
+        });
+
+        foreach (FileSystemItem item in FileUtil.EnumerateFiles(
+            _option.SrcDir,
+            _option.IgnoreError,
+            _option.Includes?.ToList(),
+            _option.Excludes?.ToList(),
+            _option.CreateBefore,
+            _option.CreateAfter,
+            _option.LastModifyBefore,
+            _option.LastModifyAfter))
+        {
+            _ = await copyBlock.SendAsync(item);
         }
 
-        sw.Stop();
-        await AggregateOutputSink.DefaultLineAsync($"  Finished copying files. Elapsed: [{sw.Elapsed.Human()}]");
-        await AggregateOutputSink.NewLineAsync();
+        copyBlock.Complete();
+        await copyBlock.Completion;
+
+        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem.AddSegment(LogSegmentLevel.Default, "Copied files from source to destination.");
+        logItem.AddLine();
+        AddLog(logItem);
     }
 
     private async Task CleanDestFilesAsync()
@@ -161,44 +114,48 @@ public class SyncHandler : HandlerBase
             return;
         }
 
-        await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-        await AggregateOutputSink.DefaultLineAsync("Cleanup files in destination ... ");
+        LogItem logItem = new();
+        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem.AddSegment(LogSegmentLevel.Default, "Cleaning extra files in destination...");
+        logItem.AddLine();
+        AddLog(logItem);
 
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        foreach (string relativeDestFile in EnumerateFiles(_option.DestDir))
+        ActionBlock<FileSystemItem> block = new(item =>
         {
-            if (CancellationToken.IsCancellationRequested)
+            string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
+            string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+            if (!File.Exists(srcFullPath))
             {
-                continue;
-            }
-
-            string srcFile = Path.Combine(_option.SrcDir, relativeDestFile);
-            string destFile = Path.Combine(_option.DestDir, relativeDestFile);
-            if (!File.Exists(srcFile))
-            {
-                await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [F] {relativeDestFile} ");
-                if (_option.DryRun)
+                if (!_option.DryRun)
                 {
-                    await AggregateOutputSink.LightLineAsync("[Dry]", true);
-                }
-                else
-                {
-                    if (File.Exists(destFile))
+                    if (File.Exists(item.FullPath))
                     {
-                        File.Delete(destFile);
+                        File.Delete(item.FullPath);
                     }
-
-                    await AggregateOutputSink.LightAsync("[");
-                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                    await AggregateOutputSink.LightLineAsync("]");
                 }
+
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                AddLog(logItem);
             }
+        });
+
+        foreach (FileSystemItem item in FileUtil.EnumerateFiles(_option.DestDir, _option.IgnoreError))
+        {
+            _ = await block.SendAsync(item);
         }
 
-        stopwatch.Stop();
-        await AggregateOutputSink.DefaultLineAsync(
-            $"  Finished destination files cleanup. Elapsed: [{stopwatch.Elapsed.Human()}]");
-        await AggregateOutputSink.NewLineAsync();
+        block.Complete();
+        await block.Completion;
+
+        LogItem logItem2 = new();
+        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem2.AddSegment(LogSegmentLevel.Default, "Cleaned extra files in destination...");
+        logItem2.AddLine();
+        AddLog(logItem2);
     }
 
     private async Task CleanDestDirsAsync()
@@ -208,76 +165,73 @@ public class SyncHandler : HandlerBase
             return;
         }
 
-        await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-        await AggregateOutputSink.DefaultLineAsync("Cleanup directories in destination ... ");
+        LogItem logItem = new();
+        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem.AddSegment(LogSegmentLevel.Default, "Cleaning extra directories in destination...");
+        logItem.AddLine();
+        AddLog(logItem);
 
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        foreach (string relativeDestDir in EnumerateDirectories(_option.DestDir))
+        ActionBlock<FileSystemItem> block = new(item =>
         {
-            if (CancellationToken.IsCancellationRequested)
+            string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
+            string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+            if (!Directory.Exists(srcFullPath))
             {
-                continue;
-            }
-
-            string srcDir = Path.Combine(_option.SrcDir, relativeDestDir);
-            string destDir = Path.Combine(_option.DestDir, relativeDestDir);
-            if (!Directory.Exists(srcDir))
-            {
-                await AggregateOutputSink.LightAsync($"    {Constants.SquareUnicode} [D] {relativeDestDir} ");
-                if (_option.DryRun)
+                if (!_option.DryRun)
                 {
-                    await AggregateOutputSink.LightLineAsync("[Dry]", true);
-                }
-                else
-                {
-                    if (Directory.Exists(destDir))
+                    if (Directory.Exists(item.FullPath))
                     {
-                        Directory.Delete(destDir, true);
+                        Directory.Delete(item.FullPath, true);
                     }
-
-                    await AggregateOutputSink.LightAsync("[");
-                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                    await AggregateOutputSink.LightLineAsync("]");
                 }
+
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                AddLog(logItem);
             }
+        });
+
+        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(_option.DestDir, _option.IgnoreError))
+        {
+            _ = await block.SendAsync(item);
         }
 
-        stopwatch.Stop();
-        await AggregateOutputSink.DefaultLineAsync(
-            $"  Finished destination directories cleanup. Elapsed: [{stopwatch.Elapsed.Human()}]");
-        await AggregateOutputSink.NewLineAsync();
+        block.Complete();
+        await block.Completion;
+
+        LogItem logItem2 = new();
+        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem2.AddSegment(LogSegmentLevel.Default, "Cleaned extra directories in destination...");
+        logItem2.AddLine();
+        AddLog(logItem2);
     }
 
     protected override async Task<int> HandleInternalAsync()
     {
         try
         {
-            await AggregateOutputSink.LightLineAsync($"{Constants.ArrowUnicode} Source: {_option.SrcDir}", true);
-            await AggregateOutputSink.LightLineAsync($"{Constants.ArrowUnicode} Destination: {_option.DestDir}", true);
-            await AggregateOutputSink.NewLineAsync(true);
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Src: ");
+            logItem.AddSegment(LogSegmentLevel.Default, _option.SrcDir);
+            logItem.AddLine();
+            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Dest: ");
+            logItem.AddSegment(LogSegmentLevel.Default, _option.DestDir);
+            logItem.AddLine();
+            AddLog(logItem);
 
-            if (Path.GetRelativePath(_option.DestDir, _option.SrcDir) == Path.GetFileName(_option.SrcDir))
-            {
-                await AggregateOutputSink.WarnLineAsync(
-                    "No actions required: the destination already exist in source.");
-                return 0;
-            }
-
-            // TODO: Need to resolve this case
-            //if (Path.GetRelativePath(_option.SrcDir, _option.DestDir) != _option.DestDir)
-            //{
-            //    await AggregateOutputSink.ErrorLineAsync("Not supported: the source contains destination.");
-            //    return;
-            //}
-
-            await CreateDestDirAsync();
             await CopyFilesAsync();
             await CleanDestFilesAsync();
             await CleanDestDirsAsync();
         }
         catch (Exception ex)
         {
-            await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
+            AddLog(logItem);
+
             return 1;
         }
 

@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Tur.Model;
 using Tur.Option;
 using Tur.Util;
@@ -19,319 +19,267 @@ public class RmHandler : HandlerBase
         _option = option;
     }
 
-    private async Task<List<ItemEntry>> GetFromFileListAsync()
+    private async Task DeleteFromFileListAsync()
     {
-        List<ItemEntry> result = new();
-        if (!string.IsNullOrEmpty(_option.FromFile))
+        if (string.IsNullOrEmpty(_option.FromFile))
         {
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Reading files in {_option.FromFile} ...", true);
-            if (!File.Exists(_option.FromFile))
-            {
-                throw new Exception($"File not found for --from-file: {_option.FromFile}");
-            }
-
-            foreach (string item in await File.ReadAllLinesAsync(_option.FromFile, CancellationToken))
-            {
-                if (File.Exists(item))
-                {
-                    result.Add(new ItemEntry(Path.GetFullPath(item), null));
-                    continue;
-                }
-
-                if (Directory.Exists(item))
-                {
-                    result.Add(new ItemEntry(Path.GetFullPath(item), null, true));
-                }
-            }
-
-            await AggregateOutputSink.DefaultLineAsync(
-                "  Finished reading file in --from-file", true);
-            await AggregateOutputSink.NewLineAsync(true);
+            return;
         }
 
-        return result;
+        if (!File.Exists(_option.FromFile))
+        {
+            if (_option.IgnoreError)
+            {
+                return;
+            }
+
+            throw new Exception($"The file specifed by --from-file({_option.FromFile}) not exists.");
+        }
+
+        LogItem logItem1 = new();
+        logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
+        logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting files in {_option.FromFile} ...");
+        AddLog(logItem1);
+
+        ActionBlock<FileSystemItem> block = CreateDeleteBlock();
+
+        await foreach (string item in File.ReadLinesAsync(_option.FromFile, CancellationToken))
+        {
+            FileSystemItem result = default;
+
+            if (File.Exists(item))
+            {
+                result = new FileSystemItem(false)
+                {
+                    FullPath = Path.GetFullPath(item)
+                };
+            }
+            else if (Directory.Exists(item))
+            {
+                result = new FileSystemItem(true)
+                {
+                    FullPath = Path.GetFullPath(item)
+                };
+            }
+
+            if (result == default)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw new Exception($"Invalid path in file specified by --from-file({_option.FromFile}).");
+                }
+            }
+            else
+            {
+                _ = await block.SendAsync(result);
+            }
+        }
+
+        block.Complete();
+        await block.Completion;
+
+        LogItem logItem2 = new();
+        logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+        logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted files in {_option.FromFile}.");
+        logItem2.AddLine();
+        AddLog(logItem1);
     }
 
-    private async Task<List<ItemEntry>> GetFromFilterAsync()
+    private async Task DeleteFromFilterAsync()
     {
-        List<ItemEntry> result = new();
-
-        bool filterFiles = _option.File || (!_option.File && !_option.Dir);
-        if (filterFiles)
+        if (string.IsNullOrEmpty(_option.Destination))
         {
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Looking for files on deletion ...", true);
-            foreach (var file in FileUtil.EnumerateFiles(
-                _option.Destination, 
-                _option.IgnoreError, 
-                _option.Includes?.ToList(), 
+            return;
+        }
+
+        if (!Directory.Exists(_option.Destination))
+        {
+            if (_option.IgnoreError)
+            {
+                return;
+            }
+
+            throw new Exception($"The directory specifed({_option.FromFile}) not exists.");
+        }
+
+
+        if (_option.File || (!_option.File && !_option.Dir))
+        {
+            LogItem logItem1 = new();
+            logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
+            logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting files in destination...");
+            AddLog(logItem1);
+
+            ActionBlock<FileSystemItem> block = CreateDeleteBlock();
+            foreach (FileSystemItem file in FileUtil.EnumerateFiles(
+                _option.Destination,
+                _option.IgnoreError,
+                _option.Includes?.ToList(),
+                _option.Excludes?.ToList(),
+                _option.CreateBefore,
+                _option.CreateAfter,
+                _option.LastModifyBefore,
+                _option.LastModifyAfter))
+            {
+                _ = await block.SendAsync(file);
+            }
+
+            block.Complete();
+            await block.Completion;
+
+            LogItem logItem2 = new();
+            logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+            logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted files in destination.");
+            logItem2.AddLine();
+            AddLog(logItem2);
+        }
+
+        if (_option.Dir || (!_option.File && !_option.Dir))
+        {
+            LogItem logItem1 = new();
+            logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
+            logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting directories in destination...");
+            AddLog(logItem1);
+
+            ActionBlock<FileSystemItem> block = CreateDeleteBlock();
+            foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(
+                _option.Destination,
+                _option.IgnoreError,
+                _option.Includes?.ToList(),
                 _option.Excludes?.ToList()))
             {
-                if(file.HasError)
-                {
-                    await AggregateOutputSink.ErrorLineAsync($"{file.Error.Message} --> SKIP.", ex: file.Error);
-                    continue;
-                }
-
-                result.Add(new ItemEntry(file.FullPath, Path.GetRelativePath(_option.Destination, file.FullPath)));
+                _ = await block.SendAsync(dir);
             }
 
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Finished the files lookup", true);
-            await AggregateOutputSink.NewLineAsync(true);
+            block.Complete();
+            await block.Completion;
+
+            LogItem logItem2 = new();
+            logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+            logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted directories in destination.");
+            logItem2.AddLine();
+            AddLog(logItem2);
         }
-
-        bool filterDirs = _option.Dir || (!_option.File && !_option.Dir);
-        if (filterDirs)
-        {
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Looking for directories on deletion ...", true);
-            foreach (string dir in EnumerateDirectories(_option.Destination, true, true))
-            {
-                result.Add(new ItemEntry(dir, Path.GetRelativePath(_option.Destination, dir), true));
-            }
-
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Finished the directories lookup.", true);
-            await AggregateOutputSink.NewLineAsync(true);
-        }
-
-        return result;
     }
 
-    private async Task DeleteFilesAsync(List<ItemEntry> entries)
+    private async Task DeleteFromEmptyDirAsync()
     {
-        if (!entries.Any())
+        if (!_option.EmptyDir || string.IsNullOrEmpty(_option.Destination))
         {
             return;
         }
 
-        await AggregateOutputSink.DefaultAsync(
-            $"{Constants.ArrowUnicode} Following [");
-        await AggregateOutputSink.InfoAsync(entries.Count.ToString());
-        await AggregateOutputSink.DefaultLineAsync("] files are on the deletion list ...");
-        foreach (ItemEntry entry in entries)
+        if (!Directory.Exists(_option.Destination))
         {
-            await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
-        }
-
-        await AggregateOutputSink.NewLineAsync();
-        if (!_option.Yes)
-        {
-            await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
-            if (Console.ReadKey().Key != ConsoleKey.Y)
+            if (_option.IgnoreError)
             {
-                await ConsoleSink.NewLineAsync();
-                await ConsoleSink.WarnLineAsync("No file will be deleted.");
-                await ConsoleSink.NewLineAsync();
                 return;
             }
+
+            throw new Exception($"The directory specifed({_option.FromFile}) not exists.");
         }
 
-        await AggregateOutputSink.NewLineAsync();
-        await ConsoleSink.NewLineAsync();
-        await AggregateOutputSink.DefaultLineAsync(
-            $"{Constants.ArrowUnicode} Deletion started ...");
-        foreach (ItemEntry entry in entries)
+        LogItem logItem1 = new();
+        logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
+        logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting empty directory in destination...");
+        AddLog(logItem1);
+
+        ActionBlock<FileSystemItem> block = CreateDeleteBlock();
+        foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(_option.Destination, _option.IgnoreError))
         {
-            await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
-
-            try
+            if (!FileUtil.EnumerateFiles(dir.FullPath, _option.IgnoreError).Any())
             {
-                if (File.Exists(entry.FullPath))
-                {
-                    File.Delete(entry.FullPath);
-                }
-
-                await AggregateOutputSink.LightAsync("[");
-                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                await AggregateOutputSink.LightLineAsync("]");
-            }
-            catch (Exception ex)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw;
-                }
-
-                await ConsoleSink.WarnAsync($"Deleting file [{entry.FullPath}] failed, operation skipped.");
-                await LogFileSink.WarnAsync($"Deleting file [{entry.FullPath}] failed, operation skipped. Error={ex}");
+                _ = await block.SendAsync(dir);
             }
         }
 
-        await AggregateOutputSink.DefaultLineAsync(
-            "  Finished deletion on files");
-        await AggregateOutputSink.NewLineAsync();
-    }
-
-    private async Task DeleteDirsAsync(List<ItemEntry> entries)
-    {
-        if (!entries.Any())
-        {
-            return;
-        }
-
-        await AggregateOutputSink.DefaultAsync(
-            $"{Constants.ArrowUnicode} Following [");
-        await AggregateOutputSink.InfoAsync(entries.Count.ToString());
-        await AggregateOutputSink.DefaultLineAsync("] directories are on the deletion list ...");
-        foreach (ItemEntry entry in entries)
-        {
-            await AggregateOutputSink.LightLineAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()}");
-        }
-
-        await AggregateOutputSink.NewLineAsync();
-        if (!_option.Yes)
-        {
-            await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
-            if (Console.ReadKey().Key != ConsoleKey.Y)
-            {
-                await ConsoleSink.NewLineAsync();
-                await ConsoleSink.WarnLineAsync("No directory will be deleted.");
-                await ConsoleSink.NewLineAsync();
-                return;
-            }
-        }
-
-        await AggregateOutputSink.NewLineAsync();
-        await ConsoleSink.NewLineAsync();
-        await AggregateOutputSink.DefaultLineAsync(
-            $"{Constants.ArrowUnicode} Deletion started ...");
-
-        foreach (ItemEntry entry in entries)
-        {
-            await AggregateOutputSink.LightAsync($"  {Constants.SquareUnicode} {entry.GetDisplayPath()} ");
-
-            try
-            {
-                if (Directory.Exists(entry.FullPath))
-                {
-                    Directory.Delete(entry.FullPath, true);
-                }
-
-                await AggregateOutputSink.LightAsync("[");
-                await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                await AggregateOutputSink.LightLineAsync("]");
-            }
-            catch (Exception ex)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw;
-                }
-
-                await ConsoleSink.WarnAsync($"Deleting directory [{entry.FullPath}] failed, operation skipped.");
-                await LogFileSink.WarnAsync($"Deleting directory [{entry.FullPath}] failed, operation skipped. Error={ex}");
-            }
-        }
-
-        await AggregateOutputSink.DefaultLineAsync(
-            "  Finished deletion on directories");
-        await AggregateOutputSink.NewLineAsync();
-    }
-
-    public async Task CleanupEmptyDirsAsync()
-    {
-        if (!_option.EmptyDir)
-        {
-            return;
-        }
-
-        await AggregateOutputSink.DefaultLineAsync($"{Constants.ArrowUnicode} Cleanup empty directories started ...");
-        List<string> emptyDirs = EnumerateDirectories(_option.Destination, returnAbsolutePath: true)
-            .Where(x => !FileUtil.EnumerateFiles(x, _option.IgnoreError).Any()).ToList();
-        if (emptyDirs.Any())
-        {
-            await AggregateOutputSink.DefaultAsync("    Following [", true);
-            await AggregateOutputSink.InfoAsync(emptyDirs.Count.ToString());
-            await AggregateOutputSink.DefaultLineAsync("] empty directories are on the deletion list ...");
-            foreach (string emptyDir in emptyDirs)
-            {
-                await AggregateOutputSink.LightLineAsync(
-                    $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)}");
-            }
-
-            await AggregateOutputSink.NewLineAsync();
-
-            if (!_option.Yes)
-            {
-                await ConsoleSink.InfoAsync("Are you sure to delete? Y/y for yes, others for no: ");
-                if (Console.ReadKey().Key != ConsoleKey.Y)
-                {
-                    await ConsoleSink.NewLineAsync();
-                    await ConsoleSink.WarnLineAsync("No empty directory will be deleted.");
-                    await ConsoleSink.NewLineAsync();
-                    return;
-                }
-            }
-
-            await AggregateOutputSink.NewLineAsync();
-            await ConsoleSink.NewLineAsync();
-            await AggregateOutputSink.DefaultLineAsync(
-                $"{Constants.ArrowUnicode} Deletion started ...");
-
-            foreach (string emptyDir in emptyDirs)
-            {
-                await AggregateOutputSink.LightAsync(
-                    $"  {Constants.SquareUnicode} {Path.GetRelativePath(_option.Destination, emptyDir)} ");
-
-                try
-                {
-                    if (Directory.Exists(emptyDir))
-                    {
-                        Directory.Delete(emptyDir, true);
-                    }
-
-                    await AggregateOutputSink.LightAsync("[");
-                    await AggregateOutputSink.ErrorAsync(Constants.XUnicode);
-                    await AggregateOutputSink.LightLineAsync("]");
-                }
-                catch (Exception ex)
-                {
-                    if (!_option.IgnoreError)
-                    {
-                        throw;
-                    }
-
-                    await ConsoleSink.WarnAsync($"Deleting empty directory [{emptyDir}] failed, operation skipped.");
-                    await LogFileSink.WarnAsync($"Deleting empty directory [{emptyDir}] failed, operation skipped. Error={ex}");
-                }
-
-            }
-        }
-
-        // Delete root destination if empty
         if (!FileUtil.EnumerateFiles(_option.Destination, _option.IgnoreError).Any())
         {
-            Directory.Delete(_option.Destination, true);
+            _ = await block.SendAsync(new FileSystemItem(true) { FullPath = _option.Destination });
         }
 
-        await AggregateOutputSink.DefaultLineAsync("  Finished empty directory cleanup");
-        await AggregateOutputSink.NewLineAsync();
+        block.Complete();
+        await block.Completion;
+
+        LogItem logItem2 = new();
+        logItem2.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
+        logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted empty directory in destination.");
+        AddLog(logItem2);
     }
 
     protected override async Task<int> HandleInternalAsync()
     {
         try
         {
-            List<ItemEntry> entries = await GetFromFileListAsync();
-            entries.AddRange(await GetFromFilterAsync());
-
-            List<ItemEntry> fileEntries = entries.Where(x => !x.IsDir).Distinct().ToList();
-            await DeleteFilesAsync(fileEntries);
-
-            List<ItemEntry> dirEntries = entries.Where(x => x.IsDir).Distinct().ToList();
-            await DeleteDirsAsync(dirEntries);
-
-            await CleanupEmptyDirsAsync();
+            await DeleteFromFileListAsync();
+            await DeleteFromFilterAsync();
+            await DeleteFromEmptyDirAsync();
         }
         catch (Exception ex)
         {
-            await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
+            AddLog(logItem);
+
             return 1;
         }
 
         return 0;
+    }
+
+    private ActionBlock<FileSystemItem> CreateDeleteBlock()
+    {
+        ActionBlock<FileSystemItem> block = new(item =>
+        {
+            bool noOp = true;
+            Exception error = null;
+            try
+            {
+                if (item.IsDir)
+                {
+                    if (Directory.Exists(item.FullPath))
+                    {
+                        noOp = false;
+                        Directory.Delete(item.FullPath, true);
+                    }
+                }
+                else
+                {
+                    if (File.Exists(item.FullPath))
+                    {
+                        noOp = false;
+                        File.Delete(item.FullPath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw;
+                }
+
+                error = ex;
+            }
+
+            if (!noOp)
+            {
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                if (error != null)
+                {
+                    logItem.AddSegment(LogSegmentLevel.Error, Constants.XUnicode);
+                }
+                else
+                {
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                }
+                logItem.AddSegment(LogSegmentLevel.Verbose, "]");
+                logItem.AddSegment(LogSegmentLevel.Default, item.FullPath, error);
+                AddLog(logItem);
+            }
+        }, new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount });
+
+        return block;
     }
 }

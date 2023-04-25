@@ -45,9 +45,6 @@ public class MainService
         Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        Option<bool> verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
-
         Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
 
@@ -63,12 +60,6 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
-        Option<bool> noConsoleOption = CreateNoConsoleOption();
-        cmd.AddOption(noConsoleOption);
-
-        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
-        cmd.AddOption(redirectErrorToOutputOption);
-
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
         {
             Arity = ArgumentArity.ExactlyOne
@@ -81,14 +72,11 @@ public class MainService
             string output = context.ParseResult.GetValueForOption(outputOption);
             string[] includes = context.ParseResult.GetValueForOption(includeOption);
             string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-            bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
             DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
             DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
             DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
             DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
             bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-            bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
-            bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -103,13 +91,10 @@ public class MainService
                 LastModifyBefore = lastModifyBefore,
                 CreateAfter = createAfter,
                 CreateBefore = createBefore,
-                EnableVerbose = enableVerbose,
                 OutputDir = output,
                 Includes = includes,
                 Excludes = excludes,
-                IgnoreError = ignoreError,
-                NoConsole = noConsole,
-                RedirectErrorToOutput = redirectErrorToOutput
+                IgnoreError = ignoreError
             };
 
             await using DffHandler handler = new(option, context.GetCancellationToken());
@@ -130,9 +115,6 @@ public class MainService
 
         Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
-
-        Option<bool> verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
 
         Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
@@ -178,7 +160,7 @@ public class MainService
 
         Argument<string> destArg = new("dest", "The destination directory.")
         {
-            Arity = ArgumentArity.ExactlyOne
+            Arity = ArgumentArity.ZeroOrOne
         };
         cmd.AddArgument(destArg);
 
@@ -191,18 +173,11 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
-        Option<bool> noConsoleOption = CreateNoConsoleOption();
-        cmd.AddOption(noConsoleOption);
-
-        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
-        cmd.AddOption(redirectErrorToOutputOption);
-
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
                 string[] includes = context.ParseResult.GetValueForOption(includeOption);
                 string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-                bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
                 string dest = context.ParseResult.GetValueForArgument(destArg);
                 bool file = context.ParseResult.GetValueForOption(fileOption);
                 bool dir = context.ParseResult.GetValueForOption(dirOption);
@@ -214,8 +189,6 @@ public class MainService
                 DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-                bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
-                bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -236,13 +209,10 @@ public class MainService
                     LastModifyBefore = lastModifyBefore,
                     CreateAfter = createAfter,
                     CreateBefore = createBefore,
-                    EnableVerbose = enableVerbose,
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError,
-                    NoConsole = noConsole,
-                    RedirectErrorToOutput = redirectErrorToOutput
+                    IgnoreError = ignoreError
                 };
 
                 await using RmHandler handler = new(option, context.GetCancellationToken());
@@ -263,9 +233,6 @@ public class MainService
 
         Option<string> outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
-
-        Option<bool> verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
 
         Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
@@ -329,18 +296,11 @@ public class MainService
         Option<bool> ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
-        Option<bool> noConsoleOption = CreateNoConsoleOption();
-        cmd.AddOption(noConsoleOption);
-
-        Option<bool> redirectErrorToOutputOption = CreateRedirectErrorToOutputOption();
-        cmd.AddOption(redirectErrorToOutputOption);
-
         cmd.SetHandler(async (context) =>
             {
                 string output = context.ParseResult.GetValueForOption(outputOption);
                 string[] includes = context.ParseResult.GetValueForOption(includeOption);
                 string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-                bool enableVerbose = context.ParseResult.GetValueForOption(verboseOption);
                 bool delete = context.ParseResult.GetValueForOption(deleteOption);
                 bool dryRun = context.ParseResult.GetValueForOption(dryRunOption);
                 string srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
@@ -353,8 +313,6 @@ public class MainService
                 bool preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
                 bool preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-                bool noConsole = context.ParseResult.GetValueForOption(noConsoleOption);
-                bool redirectErrorToOutput = context.ParseResult.GetValueForOption(redirectErrorToOutputOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -376,13 +334,10 @@ public class MainService
                     LastModifyBefore = lastModifyBefore,
                     CreateAfter = createAfter,
                     CreateBefore = createBefore,
-                    EnableVerbose = enableVerbose,
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError,
-                    NoConsole = noConsole,
-                    RedirectErrorToOutput = redirectErrorToOutput
+                    IgnoreError = ignoreError
                 };
 
                 await using SyncHandler handler = new(option, context.GetCancellationToken());
@@ -416,15 +371,6 @@ public class MainService
     private Option<string[]> CreateExcludeOption()
     {
         return new Option<string[]>(new[] { "-e", "--exclude" }, "Glob patterns for excluded files.")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
-    }
-
-    private Option<bool> CreateVerboseOption()
-    {
-        return new Option<bool>(new[] { "-v", "--verbose" }, "Display detailed logs.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
@@ -473,26 +419,6 @@ public class MainService
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne
-        };
-    }
-
-    private Option<bool> CreateNoConsoleOption()
-    {
-        return new Option<bool>(new[] { "--no-console" }, "No console environment available.")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne,
-            IsHidden = true
-        };
-    }
-
-    private Option<bool> CreateRedirectErrorToOutputOption()
-    {
-        return new Option<bool>(new[] { "--redirect-error-to-output" }, "Redirect error stream to output.")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne,
-            IsHidden = true
         };
     }
 }

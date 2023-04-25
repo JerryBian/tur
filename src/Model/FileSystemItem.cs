@@ -6,11 +6,15 @@ namespace Tur.Model
     public class FileSystemItem
     {
         private readonly Lazy<long> _size;
+        private readonly Lazy<DateTime> _createTime;
+        private readonly Lazy<DateTime> _lastWriteTime;
 
         public FileSystemItem(bool isDir)
         {
             IsDir = isDir;
             _size = new Lazy<long>(GetSize, true);
+            _createTime = new Lazy<DateTime>(GetCreateTime, true);
+            _lastWriteTime = new Lazy<DateTime>(GetLastWriteTime, true);
         }
 
         public bool IsDir { get; }
@@ -19,18 +23,27 @@ namespace Tur.Model
 
         public long Size => _size.Value;
 
+        public DateTime CreateTime => _createTime.Value;
+
+        public DateTime LastWriteTime => _lastWriteTime.Value;
+
         public bool HasError { get; set; }
 
         public Exception Error { get; set; }
 
         private long GetSize()
         {
-            if(!IsDir)
-            {
-                return new FileInfo(FullPath).Length;
-            }
+            return !IsDir ? new FileInfo(FullPath).Length : throw new NotImplementedException();
+        }
 
-            throw new NotImplementedException();
+        private DateTime GetCreateTime()
+        {
+            return !IsDir ? File.GetCreationTime(FullPath) : throw new NotImplementedException();
+        }
+
+        private DateTime GetLastWriteTime()
+        {
+            return !IsDir ? File.GetLastWriteTime(FullPath) : throw new NotImplementedException();
         }
     }
 }

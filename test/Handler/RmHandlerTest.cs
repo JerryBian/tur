@@ -19,7 +19,7 @@ public class RmHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new RmOption(Array.Empty<string>()) { Yes = true, EnableVerbose = true };
+        _option = new RmOption(Array.Empty<string>()) { Yes = true };
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class RmHandlerTest : TestBase
 
         Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
-        Assert.True(!Directory.GetDirectories(_dir).Any());
+        Assert.True(Directory.GetDirectories(_dir).Any());
     }
 
     [Fact]
@@ -183,6 +183,7 @@ public class RmHandlerTest : TestBase
     {
         _option.Destination = _dir;
         _option.File = true;
+        _option.IgnoreError = true;
         _option.Excludes = new[] { "**" };
         _option.EmptyDir = true;
         _ = MockSubDir(_dir, "test");

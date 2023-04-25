@@ -1,184 +1,160 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Tur.Extension;
+using System.Threading.Tasks.Dataflow;
+using Tur.Model;
 using Tur.Option;
-using Tur.Sink;
 using Tur.Util;
 
 namespace Tur.Handler;
 
 public class DffHandler : HandlerBase
 {
-    private readonly string _exportedDupFile;
-    private readonly ITurSink _exportedDupFileSink;
     private readonly DffOption _option;
 
     public DffHandler(DffOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
         _option = option;
-        _exportedDupFile = Path.Combine(option.OutputDir,
-            $"tur-{option.CmdName}-{GetRandomFile()}.txt");
-        _exportedDupFileSink = new FileSink(_exportedDupFile, option);
     }
 
     protected override async Task<int> HandleInternalAsync()
     {
         try
         {
-            Dictionary<long, List<string>> groupedItems = await ScanAndGroupFilesAsync();
-            await AggregateOutputSink.InfoLineAsync(
-                $"{Constants.ArrowUnicode} Found {groupedItems.Count} groups with exactly same file size.");
-            await AggregateOutputSink.NewLineAsync();
+            List<List<FileSystemItem>> items = await ScanByLengthAsync();
+            TransformBlock<List<FileSystemItem>, DffResult> compareBlock = CreateCompareBlock();
+            ActionBlock<DffResult> sinkBlock = CreateSinkBlock();
 
-            for (int i = 0; i < groupedItems.Count; i++)
+            _ = compareBlock.LinkTo(sinkBlock, new DataflowLinkOptions { PropagateCompletion = true });
+
+            foreach (List<FileSystemItem> item in items)
             {
-                if (CancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                await ProcessGroupAsync(i, groupedItems);
+                _ = await compareBlock.SendAsync(item);
             }
 
-            await AggregateOutputSink.LightLineAsync(
-                $"{Constants.ArrowUnicode} Duplicate files list: {_exportedDupFile}");
-            await AggregateOutputSink.NewLineAsync();
+            compareBlock.Complete();
+            await sinkBlock.Completion;
         }
         catch (Exception ex)
         {
-            await AggregateOutputSink.ErrorLineAsync(ex.Message, ex: ex);
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
+            AddLog(logItem);
+
             return 1;
         }
 
         return 0;
     }
 
-    private async Task ProcessGroupAsync(int i, Dictionary<long, List<string>> groupedItems)
+    private ActionBlock<DffResult> CreateSinkBlock()
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        bool found = false;
-        int currentGroup = i + 1;
-        KeyValuePair<long, List<string>> group = groupedItems.ElementAt(i);
-        await AggregateOutputSink.LightAsync($"{Constants.ArrowUnicode} ");
-        await AggregateOutputSink.LightAsync($"[{currentGroup}/{groupedItems.Count}] ", true);
-        await AggregateOutputSink.DefaultAsync("Working on group ");
-        await AggregateOutputSink.InfoAsync(currentGroup.ToString());
-        await AggregateOutputSink.DefaultAsync(" [");
-        await AggregateOutputSink.InfoAsync(HumanUtil.GetSize(group.Key));
-        await AggregateOutputSink.DefaultAsync("], it contains ");
-        await AggregateOutputSink.InfoAsync($"{group.Value.Count}");
-        await AggregateOutputSink.DefaultLineAsync(" files.");
-
-        HashSet<string> processedFiles = new();
-        foreach (string file1 in group.Value)
+        ActionBlock<DffResult> block = new(r =>
         {
-            if (CancellationToken.IsCancellationRequested)
+            if (!r.HasDuplicate)
             {
-                break;
+                return;
             }
 
-            _ = processedFiles.Add(file1);
-            List<string> targetFiles = group.Value.Where(x => !processedFiles.Contains(x)).ToList();
-            if (!targetFiles.Any() || CancellationToken.IsCancellationRequested)
+            long length = r.DuplicateItems.First().First().Size;
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+            logItem.AddSegment(LogSegmentLevel.Default, HumanUtil.GetSize(length));
+            logItem.AddSegment(LogSegmentLevel.Verbose, "]");
+            logItem.AddSegment(LogSegmentLevel.Success, $" {r.DuplicateItems.Count} groups of duplicate:");
+            foreach (List<FileSystemItem> items in r.DuplicateItems)
             {
-                break;
-            }
-
-            List<string> sameFiles = new();
-            await AggregateOutputSink.LightLineAsync(
-                $"  {Constants.SquareUnicode} Comparing below {targetFiles.Count} files with {file1}",
-                true);
-            foreach (string file2 in targetFiles)
-            {
-                if (CancellationToken.IsCancellationRequested)
+                foreach (FileSystemItem item in items)
                 {
-                    break;
-                }
-
-                await AggregateOutputSink.LightAsync($"    {Constants.DotUnicode} {file2} ", true);
-                if (await IsSameFileAsync(Path.Combine(_option.Dir, file1),
-                        Path.Combine(_option.Dir, file2)))
-                {
-                    found = true;
-                    _ = processedFiles.Add(file2);
-                    await AggregateOutputSink.WarnLineAsync($"[{Constants.CheckUnicode}]", true);
-                    sameFiles.Add(file2);
-                }
-                else
-                {
-                    await AggregateOutputSink.LightLineAsync($"[{Constants.XUnicode}]", true);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, $"  {Constants.DotUnicode} ");
+                    logItem.AddSegment(LogSegmentLevel.Default, item.FullPath);
+                    logItem.AddLine();
                 }
             }
 
-            if (sameFiles.Any())
-            {
-                sameFiles.Add(file1);
-                sameFiles = sameFiles.Select(x => Path.Combine(_option.Dir, x)).ToList();
+            AddLog(logItem);
+        });
 
-                foreach (string sameFile in sameFiles)
-                {
-                    await _exportedDupFileSink.DefaultLineAsync(sameFile);
-                }
-
-                await _exportedDupFileSink.NewLineAsync();
-                _option.ExportedList?.Add(sameFiles);
-            }
-        }
-
-        stopwatch.Stop();
-
-        await AggregateOutputSink.DefaultAsync("  Group ");
-        await AggregateOutputSink.InfoAsync(currentGroup.ToString());
-        await AggregateOutputSink.DefaultAsync(" finished - ");
-
-        if (found)
-        {
-            await AggregateOutputSink.WarnAsync("[Duplicate files found]. ");
-        }
-        else
-        {
-            await AggregateOutputSink.DefaultAsync("[No duplicate files found]. ");
-        }
-
-        await AggregateOutputSink.LightLineAsync($"Elapsed: [{stopwatch.Elapsed.Human()}]");
-        await AggregateOutputSink.NewLineAsync();
+        return block;
     }
 
-    private async Task<Dictionary<long, List<string>>> ScanAndGroupFilesAsync()
+    private TransformBlock<List<FileSystemItem>, DffResult> CreateCompareBlock()
     {
-        Dictionary<long, List<string>> groupedItems = new();
-        await AggregateOutputSink.LightLineAsync($"{Constants.ArrowUnicode} Scanning directory: {_option.Dir}", true);
-        await AggregateOutputSink.NewLineAsync(true);
-
-        foreach (string file in EnumerateFiles(_option.Dir, true))
+        TransformBlock<List<FileSystemItem>, DffResult> block = new(async items =>
         {
-            if (CancellationToken.IsCancellationRequested)
+            List<HashSet<FileSystemItem>> matchedGroups = new();
+            for (int i = 0; i < items.Count - 1; i++)
             {
-                break;
+                FileSystemItem item1 = items[i];
+                if (matchedGroups.Any(x => x.Contains(item1)))
+                {
+                    continue;
+                }
+
+                for (int j = i + 1; j < items.Count; j++)
+                {
+                    FileSystemItem item2 = items[j];
+                    if (matchedGroups.Any(x => x.Contains(item2)))
+                    {
+                        continue;
+                    }
+
+                    if (await FileUtil.IsSameFileAsync(item1.FullPath, item2.FullPath, _option.IgnoreError))
+                    {
+                        HashSet<FileSystemItem> group = matchedGroups.FirstOrDefault(x => x.Contains(item1));
+                        if (group == null)
+                        {
+                            group = new HashSet<FileSystemItem>
+                            {
+                                item1
+                            };
+                            matchedGroups.Add(group);
+                        }
+
+                        _ = group.Add(item2);
+                    }
+                }
             }
 
-            string fullPath = Path.Combine(_option.Dir, file);
-            long fileSize = new FileInfo(fullPath).Length;
-            if (!groupedItems.ContainsKey(fileSize))
-            {
-                groupedItems.Add(fileSize, new List<string>());
-            }
+            DffResult result = new();
+            matchedGroups.ForEach(x => result.DuplicateItems.Add(x.ToList()));
+            return result;
+        });
 
-            groupedItems[fileSize].Add(file);
-        }
-
-        groupedItems = groupedItems.Where(x => x.Value.Count > 1).ToDictionary(x => x.Key, x => x.Value);
-        return groupedItems;
+        return block;
     }
 
-    public override async ValueTask DisposeAsync()
+    private async Task<List<List<FileSystemItem>>> ScanByLengthAsync()
     {
-        await _exportedDupFileSink.DisposeAsync();
-        await base.DisposeAsync();
+        ConcurrentDictionary<long, List<FileSystemItem>> result = new();
+        ActionBlock<FileSystemItem> block = new(item =>
+        {
+            _ = result.AddOrUpdate(item.Size, new List<FileSystemItem> { item }, (x, val) =>
+            {
+                val.Add(item);
+                return val;
+            });
+        }, new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount });
+
+        foreach (FileSystemItem item in FileUtil.EnumerateFiles(
+            _option.Dir,
+            _option.IgnoreError,
+            _option.Includes?.ToList(),
+            _option.Excludes?.ToList(),
+            _option.CreateBefore,
+            _option.CreateAfter,
+            _option.LastModifyBefore,
+            _option.LastModifyAfter))
+        {
+            _ = await block.SendAsync(item);
+        }
+
+        block.Complete();
+        await block.Completion;
+
+        return result.TakeWhile(x => x.Value.Count > 1).Select(x => x.Value).ToList();
     }
 }

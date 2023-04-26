@@ -6,8 +6,6 @@ public class RmOption : OptionBase
     {
     }
 
-    public bool Yes { get; set; }
-
     public bool File { get; set; }
 
     public bool Dir { get; set; }

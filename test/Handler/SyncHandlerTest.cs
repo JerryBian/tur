@@ -166,7 +166,7 @@ public class SyncHandlerTest : TestBase
 
         await using SyncHandler handler = new(option, CancellationToken.None);
         _ = await handler.HandleAsync();
-        Assert.False(Directory.Exists(_destDir));
+        Assert.True(Directory.Exists(_destDir));
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class SyncHandlerTest : TestBase
 
         await using SyncHandler handler = new(option, CancellationToken.None);
         _ = await handler.HandleAsync();
-        Assert.False(Directory.Exists(_destDir));
+        Assert.True(Directory.Exists(_destDir));
     }
 
     [Fact]

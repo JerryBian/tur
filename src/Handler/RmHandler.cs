@@ -99,7 +99,7 @@ public class RmHandler : HandlerBase
                 return;
             }
 
-            throw new Exception($"The directory specifed({_option.FromFile}) not exists.");
+            throw new Exception($"The directory specifed({_option.Destination}) not exists.");
         }
 
 

@@ -184,7 +184,7 @@ namespace Tur.Util
             using IEnumerator<string> e = files.GetEnumerator();
             while (true)
             {
-                FileSystemItem entry = new(false);
+                FileSystemItem entry = new(true);
                 try
                 {
                     if (!e.MoveNext())

@@ -19,7 +19,7 @@ public class RmHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new RmOption(Array.Empty<string>()) { Yes = true };
+        _option = new RmOption(Array.Empty<string>());
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class RmHandlerTest : TestBase
 
         Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
-        Assert.True(Directory.GetDirectories(_dir).Any());
+        Assert.True(!Directory.GetDirectories(_dir).Any());
     }
 
     [Fact]
@@ -144,6 +144,7 @@ public class RmHandlerTest : TestBase
     public async Task Test_Case_7()
     {
         _option.Destination = GetRandomName();
+        _option.IgnoreError = true;
         await using RmHandler handler = new(_option, CancellationToken.None);
         int exitCode = await handler.HandleAsync();
         Assert.Equal(0, exitCode);

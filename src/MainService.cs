@@ -122,13 +122,6 @@ public class MainService
         Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
 
-        Option<bool> yesOption = new(new[] { "-y", "--yes" }, "Perform deletion without confirmation.")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
-        cmd.AddOption(yesOption);
-
         Option<bool> fileOption = new(new[] { "-f", "--file" }, "Delete files only.")
         {
             IsRequired = false,
@@ -182,7 +175,6 @@ public class MainService
                 bool file = context.ParseResult.GetValueForOption(fileOption);
                 bool dir = context.ParseResult.GetValueForOption(dirOption);
                 bool emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
-                bool yes = context.ParseResult.GetValueForOption(yesOption);
                 string fromFile = context.ParseResult.GetValueForOption(fromFileOption);
                 DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
                 DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
@@ -203,7 +195,6 @@ public class MainService
                     File = file,
                     Dir = dir,
                     EmptyDir = emptyDir,
-                    Yes = yes,
                     FromFile = fromFile,
                     LastModifyAfter = lastModifyAfter,
                     LastModifyBefore = lastModifyBefore,

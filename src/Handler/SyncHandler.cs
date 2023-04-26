@@ -27,6 +27,56 @@ public class SyncHandler : HandlerBase
         _option = option;
     }
 
+    private async Task CreateDestDirsAsync()
+    {
+        LogItem logItem = new();
+        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem.AddSegment(LogSegmentLevel.Default, "Creating directories in destination...");
+        logItem.AddLine();
+        AddLog(logItem);
+
+        ActionBlock<FileSystemItem> createDirBlock = new(item =>
+        {
+            string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
+            string destFullPath = Path.Combine(_option.DestDir, relativePath);
+
+            if (Directory.Exists(destFullPath))
+            {
+                return;
+            }
+
+            if (!_option.DryRun)
+            {
+                Directory.CreateDirectory(destFullPath);
+            }
+
+            LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+            logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+            logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+            logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+            AddLog(logItem);
+        });
+
+        await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
+
+        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(
+            _option.SrcDir,
+            _option.IgnoreError))
+        {
+            _ = await createDirBlock.SendAsync(item);
+        }
+
+        createDirBlock.Complete();
+        await createDirBlock.Completion;
+
+        var logItem2 = new LogItem();
+        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem2.AddSegment(LogSegmentLevel.Default, "Created directories in destination.");
+        logItem2.AddLine();
+        AddLog(logItem2);
+    }
+
     private async Task CopyFilesAsync()
     {
         LogItem logItem = new();
@@ -68,8 +118,6 @@ public class SyncHandler : HandlerBase
             }
             else
             {
-                string dir = Path.GetDirectoryName(destFullPath);
-                _ = Directory.CreateDirectory(dir);
                 File.Copy(item.FullPath, destFullPath, true);
                 File.SetCreationTime(destFullPath, _option.PreserveCreateTime ? item.CreateTime : DateTime.Now);
                 File.SetLastWriteTime(destFullPath, _option.PreserveLastModifyTime ? item.LastWriteTime : DateTime.Now);
@@ -101,10 +149,11 @@ public class SyncHandler : HandlerBase
         copyBlock.Complete();
         await copyBlock.Completion;
 
-        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem.AddSegment(LogSegmentLevel.Default, "Copied files from source to destination.");
-        logItem.AddLine();
-        AddLog(logItem);
+        var logItem2 = new LogItem();
+        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
+        logItem2.AddSegment(LogSegmentLevel.Default, "Copied files from source to destination.");
+        logItem2.AddLine();
+        AddLog(logItem2);
     }
 
     private async Task CleanDestFilesAsync()
@@ -222,6 +271,7 @@ public class SyncHandler : HandlerBase
             logItem.AddLine();
             AddLog(logItem);
 
+            await CreateDestDirsAsync();
             await CopyFilesAsync();
             await CleanDestFilesAsync();
             await CleanDestDirsAsync();

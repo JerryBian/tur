@@ -191,7 +191,6 @@ public class MainService
 
                 RmOption option = new(_args)
                 {
-                    Destination = Path.GetFullPath(dest),
                     File = file,
                     Dir = dir,
                     EmptyDir = emptyDir,
@@ -205,6 +204,11 @@ public class MainService
                     Excludes = excludes,
                     IgnoreError = ignoreError
                 };
+
+                if (!string.IsNullOrEmpty(dest))
+                {
+                    option.Destination = Path.GetFullPath(dest);
+                }
 
                 await using RmHandler handler = new(option, context.GetCancellationToken());
                 context.ExitCode = await handler.HandleAsync();

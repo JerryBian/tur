@@ -40,7 +40,7 @@ public class DffHandler : HandlerBase
         }
         catch (Exception ex)
         {
-            LogItem logItem = new();
+            LogItem logItem = new() { IsStdError = true };
             logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
             AddLog(logItem);
 
@@ -61,10 +61,13 @@ public class DffHandler : HandlerBase
 
             long length = r.DuplicateItems.First().First().Size;
             LogItem logItem = new();
+            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
             logItem.AddSegment(LogSegmentLevel.Verbose, "[");
             logItem.AddSegment(LogSegmentLevel.Default, HumanUtil.GetSize(length));
             logItem.AddSegment(LogSegmentLevel.Verbose, "]");
             logItem.AddSegment(LogSegmentLevel.Success, $" {r.DuplicateItems.Count} groups of duplicate:");
+            logItem.AddLine();
+
             foreach (List<FileSystemItem> items in r.DuplicateItems)
             {
                 foreach (FileSystemItem item in items)

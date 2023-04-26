@@ -47,18 +47,18 @@ public class SyncHandler : HandlerBase
 
             if (!_option.DryRun)
             {
-                Directory.CreateDirectory(destFullPath);
+                _ = Directory.CreateDirectory(destFullPath);
             }
 
             LogItem logItem = new();
-            logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+            logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
             logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
             logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
             logItem.AddSegment(LogSegmentLevel.Default, relativePath);
             AddLog(logItem);
         });
 
-        await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
+        _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
 
         foreach (FileSystemItem item in FileUtil.EnumerateDirectories(
             _option.SrcDir,
@@ -70,7 +70,7 @@ public class SyncHandler : HandlerBase
         createDirBlock.Complete();
         await createDirBlock.Completion;
 
-        var logItem2 = new LogItem();
+        LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
         logItem2.AddSegment(LogSegmentLevel.Default, "Created directories in destination.");
         logItem2.AddLine();
@@ -110,7 +110,7 @@ public class SyncHandler : HandlerBase
             if (_option.DryRun)
             {
                 LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
@@ -125,10 +125,13 @@ public class SyncHandler : HandlerBase
 
                 sw.Stop();
                 LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
-                logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                logItem.AddSegment(LogSegmentLevel.Verbose, " [");
+                logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}/s");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "]");
                 AddLog(logItem);
             }
         });
@@ -149,7 +152,7 @@ public class SyncHandler : HandlerBase
         copyBlock.Complete();
         await copyBlock.Completion;
 
-        var logItem2 = new LogItem();
+        LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
         logItem2.AddSegment(LogSegmentLevel.Default, "Copied files from source to destination.");
         logItem2.AddLine();
@@ -184,7 +187,7 @@ public class SyncHandler : HandlerBase
                 }
 
                 LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
@@ -235,7 +238,7 @@ public class SyncHandler : HandlerBase
                 }
 
                 LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
@@ -278,7 +281,7 @@ public class SyncHandler : HandlerBase
         }
         catch (Exception ex)
         {
-            LogItem logItem = new();
+            LogItem logItem = new() { IsStdError = true };
             logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
             AddLog(logItem);
 

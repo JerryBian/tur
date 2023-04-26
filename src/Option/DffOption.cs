@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace Tur.Option;
+﻿namespace Tur.Option;
 
 public class DffOption : OptionBase
 {

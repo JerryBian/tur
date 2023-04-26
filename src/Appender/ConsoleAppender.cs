@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using Tur.Model;
 
@@ -6,42 +7,43 @@ namespace Tur.Appender
 {
     public class ConsoleAppender : BlockingAppender
     {
-        public ConsoleAppender() 
+        public ConsoleAppender()
         {
             Console.OutputEncoding = Console.InputEncoding = Encoding.UTF8;
         }
 
         protected override void Handle(LogItem item)
         {
-            foreach(var segment in item.Unwrap())
+            TextWriter writer = item.IsStdError ? Console.Error : Console.Out;
+            foreach (LogSegmentItem segment in item.Unwrap())
             {
-                if(segment.Level == LogSegmentLevel.Verbose)
+                if (segment.Level == LogSegmentLevel.Verbose)
                 {
-                    WriteMessage(segment.Message, ConsoleColor.DarkGray);
+                    WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkGray);
                     continue;
                 }
 
-                if(segment.Level == LogSegmentLevel.Default)
+                if (segment.Level == LogSegmentLevel.Default)
                 {
-                    WriteMessage(segment.Message);
+                    WriteMessage(writer, segment.Message, segment.Error);
                     continue;
                 }
 
-                if(segment.Level == LogSegmentLevel.Success)
+                if (segment.Level == LogSegmentLevel.Success)
                 {
-                    WriteMessage(segment.Message, ConsoleColor.DarkGreen);
+                    WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkGreen);
                     continue;
                 }
 
-                if(segment.Level == LogSegmentLevel.Warn)
+                if (segment.Level == LogSegmentLevel.Warn)
                 {
-                    WriteMessage(segment.Message, ConsoleColor.DarkYellow);
+                    WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkYellow);
                     continue;
                 }
 
-                if(segment.Level == LogSegmentLevel.Error)
+                if (segment.Level == LogSegmentLevel.Error)
                 {
-                    WriteMessage(segment.Message, ConsoleColor.DarkRed, false, segment.Error);
+                    WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkRed);
                     continue;
                 }
             }
@@ -49,24 +51,17 @@ namespace Tur.Appender
             Console.Out.WriteLine();
         }
 
-        private void WriteMessage(string message, ConsoleColor? foregroundColor = null, bool stdOut = true, Exception error = null)
+        private void WriteMessage(TextWriter writer, string message, Exception error = null, ConsoleColor? foregroundColor = null)
         {
-            if(foregroundColor != null)
+            if (foregroundColor != null)
             {
                 Console.ForegroundColor = foregroundColor.Value;
             }
 
-            if(stdOut)
+            writer.Write(message);
+            if (error != null)
             {
-                Console.Out.Write(message);
-            }
-            else
-            {
-                Console.Error.WriteLine(message);
-                if(error != null)
-                {
-                    Console.Error.WriteLine(error);
-                } 
+                writer.Write($"{Environment.NewLine}{error}{Environment.NewLine}");
             }
 
             if (foregroundColor != null)

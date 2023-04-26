@@ -217,7 +217,7 @@ public class RmHandler : HandlerBase
         }
         catch (Exception ex)
         {
-            LogItem logItem = new();
+            LogItem logItem = new() { IsStdError = true };
             logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
             AddLog(logItem);
 
@@ -265,17 +265,18 @@ public class RmHandler : HandlerBase
             if (!noOp)
             {
                 LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "[");
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 if (error != null)
                 {
                     logItem.AddSegment(LogSegmentLevel.Error, Constants.XUnicode);
                 }
                 else
                 {
+                    logItem.IsStdError = true;
                     logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
                 }
                 logItem.AddSegment(LogSegmentLevel.Verbose, "]");
-                logItem.AddSegment(LogSegmentLevel.Default, item.FullPath, error);
+                logItem.AddSegment(LogSegmentLevel.Default, $" {item.FullPath}", error);
                 AddLog(logItem);
             }
         }, new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount });

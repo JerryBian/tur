@@ -52,11 +52,11 @@ Options:
   -i, --include <include>                    Glob patterns for included files.
   -e, --exclude <exclude>                    Glob patterns for excluded files.
   -o, --output <output>                      The output directory for logs or any file generated during processing.
-  -v, --verbose                              Display detailed logs.
   --last-modify-after <last-modify-after>    Last modify time after filter. e.g., 2022-10-01T10:20:21
   --last-modify-before <last-modify-before>  Last modify time before fitler. e.g., 2022-08-02T16:20:21
   --create-after <create-after>              Create time after filter. e.g., 2022-07-01T10:20:21
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
+  --ignore-error                             Ignore error during file processing.
   -?, -h, --help                             Show help and usage information
 ```
 
@@ -78,7 +78,6 @@ Options:
   -i, --include <include>                    Glob patterns for included files.
   -e, --exclude <exclude>                    Glob patterns for excluded files.
   -o, --output <output>                      The output directory for logs or any file generated during processing.
-  -v, --verbose                              Display detailed logs.
   --last-modify-after <last-modify-after>    Last modify time after filter. e.g., 2022-10-01T10:20:21
   --last-modify-before <last-modify-before>  Last modify time before fitler. e.g., 2022-08-02T16:20:21
   -n, --dry-run                              Perform a trial run with no changes made.
@@ -88,6 +87,7 @@ Options:
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
   --preserve-create                          Preserve creation time for destination file.
   --preserve-last-modify                     Preserve last modify time for destination file.
+  --ignore-error                             Ignore error during file processing.
   -?, -h, --help                             Show help and usage information
 ```
 
@@ -99,7 +99,7 @@ Description:
   Remove files or directories.
 
 Usage:
-  tur rm <dest> [options]
+  tur rm [<dest>] [options]
 
 Arguments:
   <dest>  The destination directory.
@@ -108,16 +108,15 @@ Options:
   -i, --include <include>                    Glob patterns for included files.
   -e, --exclude <exclude>                    Glob patterns for excluded files.
   -o, --output <output>                      The output directory for logs or any file generated during processing.
-  -v, --verbose                              Display detailed logs.
   --last-modify-after <last-modify-after>    Last modify time after filter. e.g., 2022-10-01T10:20:21
   --last-modify-before <last-modify-before>  Last modify time before fitler. e.g., 2022-08-02T16:20:21
-  -y, --yes                                  Perform deletion without confirmation.
   -f, --file                                 Delete files only.
   -d, --dir                                  Delete directories only.
   --empty-dir                                Delete all empty directories.
   --from-file <from-file>                    Delete all files/directories listed in specified file.
   --create-after <create-after>              Create time after filter. e.g., 2022-07-01T10:20:21
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
+  --ignore-error                             Ignore error during file processing.
   -?, -h, --help                             Show help and usage information
 ```
 

@@ -12,6 +12,8 @@ namespace Tur.Model
             _segments = new List<LogSegmentItem>();
         }
 
+        public bool IsStdError { get; set; }
+
         public void AddSegment(LogSegmentLevel level, string message, Exception error = null)
         {
             _segments.Add(new LogSegmentItem(level, message, error));
@@ -19,7 +21,7 @@ namespace Tur.Model
 
         public void AddLine()
         {
-            _segments.Add(new LogSegmentItem(LogSegmentLevel.Default, "", null));
+            _segments.Add(new LogSegmentItem(LogSegmentLevel.Default, Environment.NewLine, null));
         }
 
         public List<LogSegmentItem> Unwrap()

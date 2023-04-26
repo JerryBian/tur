@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -51,14 +50,14 @@ public abstract class HandlerBase : IAsyncDisposable
         LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Log file: {_logFile}");
 
-        await _consoleAppender.DisposeAsync(); 
+        await _consoleAppender.DisposeAsync();
         await _fileAppender.DisposeAsync();
     }
 
     protected void AddLog(LogItem logItem)
     {
-        _consoleAppender.TryAdd(logItem);
-        _fileAppender.TryAdd(logItem);
+        _ = _consoleAppender.TryAdd(logItem);
+        _ = _fileAppender.TryAdd(logItem);
     }
 
     protected string GetRandomFile()
@@ -75,6 +74,7 @@ public abstract class HandlerBase : IAsyncDisposable
 
         LogItem logItem = new();
         logItem.AddSegment(LogSegmentLevel.Default, $"{Constants.ArrowUnicode} All done. Elapsed: [{stopwatch.Elapsed.Human()}]");
+        AddLog(logItem);
         return exitCode;
     }
 

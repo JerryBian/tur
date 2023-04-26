@@ -23,7 +23,7 @@ namespace Tur.Appender
 
         public bool TryAdd(LogItem item)
         {
-            if(_items.IsCompleted)
+            if (_items.IsCompleted)
             {
                 return false;
             }
@@ -34,7 +34,7 @@ namespace Tur.Appender
 
         private void Subscribe()
         {
-            foreach(var item in _items.GetConsumingEnumerable())
+            foreach (LogItem item in _items.GetConsumingEnumerable())
             {
                 try
                 {

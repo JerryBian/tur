@@ -2,7 +2,7 @@
   "profiles": {
     "Tur": {
       "commandName": "Project",
-      "commandLineArgs": "rm \\\\stage\\20E3 -y --empty-dir -v --ignore-error --no-console --redirect-error-to-output"
+      "commandLineArgs": "rm"
     }
   }
 }

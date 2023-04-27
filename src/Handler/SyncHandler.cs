@@ -56,7 +56,7 @@ public class SyncHandler : HandlerBase
             logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
             logItem.AddSegment(LogSegmentLevel.Default, relativePath);
             AddLog(logItem);
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
 
@@ -134,7 +134,7 @@ public class SyncHandler : HandlerBase
                 logItem.AddSegment(LogSegmentLevel.Verbose, "]");
                 AddLog(logItem);
             }
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         foreach (FileSystemItem item in FileUtil.EnumerateFiles(
             _option.SrcDir,
@@ -193,7 +193,7 @@ public class SyncHandler : HandlerBase
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
                 AddLog(logItem);
             }
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         foreach (FileSystemItem item in FileUtil.EnumerateFiles(_option.DestDir, _option.IgnoreError))
         {
@@ -244,7 +244,7 @@ public class SyncHandler : HandlerBase
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
                 AddLog(logItem);
             }
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         foreach (FileSystemItem item in FileUtil.EnumerateDirectories(_option.DestDir, _option.IgnoreError))
         {

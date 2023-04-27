@@ -79,7 +79,7 @@ public class DffHandler : HandlerBase
             }
 
             AddLog(logItem);
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         return block;
     }
@@ -125,7 +125,7 @@ public class DffHandler : HandlerBase
             DffResult result = new();
             matchedGroups.ForEach(x => result.DuplicateItems.Add(x.ToList()));
             return result;
-        });
+        }, DefaultExecutionDataflowBlockOptions);
 
         return block;
     }
@@ -140,7 +140,7 @@ public class DffHandler : HandlerBase
                 val.Add(item);
                 return val;
             });
-        }, new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount });
+        }, DefaultExecutionDataflowBlockOptions);
 
         foreach (FileSystemItem item in FileUtil.EnumerateFiles(
             _option.Dir,

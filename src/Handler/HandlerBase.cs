@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Tur.Appender;
 using Tur.Extension;
 using Tur.Model;
@@ -21,6 +22,7 @@ public abstract class HandlerBase : IAsyncDisposable
 
     private readonly IAppender _consoleAppender;
     private readonly IAppender _fileAppender;
+    protected readonly ExecutionDataflowBlockOptions DefaultExecutionDataflowBlockOptions;
 
     protected HandlerBase(OptionBase option, CancellationToken cancellationToken)
     {
@@ -36,6 +38,8 @@ public abstract class HandlerBase : IAsyncDisposable
             $"tur-{option.CmdName}-{GetRandomFile()}.log");
         _consoleAppender = new ConsoleAppender();
         _fileAppender = new FileAppender(_logFile);
+
+        DefaultExecutionDataflowBlockOptions = new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount, EnsureOrdered = false };
     }
 
     public virtual async ValueTask DisposeAsync()

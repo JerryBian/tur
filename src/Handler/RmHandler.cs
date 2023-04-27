@@ -279,7 +279,7 @@ public class RmHandler : HandlerBase
                 logItem.AddSegment(LogSegmentLevel.Default, $" {item.FullPath}", error);
                 AddLog(logItem);
             }
-        }, new ExecutionDataflowBlockOptions { BoundedCapacity = Constants.BoundedCapacity, MaxDegreeOfParallelism = Environment.ProcessorCount });
+        }, DefaultExecutionDataflowBlockOptions);
 
         return block;
     }

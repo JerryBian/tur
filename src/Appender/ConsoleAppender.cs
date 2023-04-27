@@ -59,13 +59,16 @@ namespace Tur.Appender
             }
 
             writer.Write(message);
-            if (error != null)
-            {
-                writer.Write($"{Environment.NewLine}{error}{Environment.NewLine}");
-            }
 
             if (foregroundColor != null)
             {
+                Console.ResetColor();
+            }
+
+            if (error != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                writer.Write($"{Environment.NewLine}{error.Message}{Environment.NewLine}");
                 Console.ResetColor();
             }
         }

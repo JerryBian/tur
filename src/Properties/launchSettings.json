@@ -2,7 +2,7 @@
   "profiles": {
     "Tur": {
       "commandName": "Project",
-      "commandLineArgs": "rm"
+      "commandLineArgs": "rm C:\\Users\\jerry\\AppData\\Local\\Temp"
     }
   }
 }

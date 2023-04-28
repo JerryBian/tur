@@ -38,24 +38,37 @@ public class SyncHandler : HandlerBase
         ActionBlock<FileSystemItem> createDirBlock = new(item =>
         {
             string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
-            string destFullPath = Path.Combine(_option.DestDir, relativePath);
-
-            if (Directory.Exists(destFullPath))
+            try
             {
-                return;
-            }
+                string destFullPath = Path.Combine(_option.DestDir, relativePath);
 
-            if (!_option.DryRun)
+                if (Directory.Exists(destFullPath))
+                {
+                    return;
+                }
+
+                if (!_option.DryRun)
+                {
+                    _ = Directory.CreateDirectory(destFullPath);
+                }
+
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                AddLog(logItem);
+            }
+            catch(Exception ex)
             {
-                _ = Directory.CreateDirectory(destFullPath);
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                logItem.AddSegment(LogSegmentLevel.Error, "Failed to create directory.", ex);
+                AddLog(logItem);
             }
-
-            LogItem logItem = new();
-            logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-            logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-            logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-            logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-            AddLog(logItem);
         }, DefaultExecutionDataflowBlockOptions);
 
         _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
@@ -87,51 +100,69 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> copyBlock = new(async item =>
         {
-            Stopwatch sw = Stopwatch.StartNew();
             string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
             string destFullPath = Path.Combine(_option.DestDir, relativePath);
 
-            if (File.Exists(destFullPath))
+            try
             {
-                if (item.Size == new FileInfo(destFullPath).Length)
+                Stopwatch sw = Stopwatch.StartNew();
+                if (File.Exists(destFullPath))
                 {
-                    if (_option.SizeOnly)
+                    if (item.Size == new FileInfo(destFullPath).Length)
+                    {
+                        if (_option.SizeOnly)
+                        {
+                            return;
+                        }
+                    }
+
+                    if (await FileUtil.IsSameFileAsync(item.FullPath, destFullPath, _option.IgnoreError))
                     {
                         return;
                     }
                 }
 
-                if (await FileUtil.IsSameFileAsync(item.FullPath, destFullPath, _option.IgnoreError))
+                if (_option.DryRun)
                 {
-                    return;
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    AddLog(logItem);
+                }
+                else
+                {
+                    File.Copy(item.FullPath, destFullPath, true);
+                    File.SetCreationTime(destFullPath, _option.PreserveCreateTime ? item.CreateTime : DateTime.Now);
+                    File.SetLastWriteTime(destFullPath, _option.PreserveLastModifyTime ? item.LastWriteTime : DateTime.Now);
+                    File.SetLastAccessTime(destFullPath, DateTime.Now);
+
+                    sw.Stop();
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, " [");
+                    logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}/s");
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "]");
+                    AddLog(logItem);
                 }
             }
-
-            if (_option.DryRun)
+            catch(Exception ex)
             {
-                LogItem logItem = new();
+                if(!_option.IgnoreError)
+                {
+                    throw;
+                }
+
+                LogItem logItem = new() { IsStdError = true };
                 logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                AddLog(logItem);
-            }
-            else
-            {
-                File.Copy(item.FullPath, destFullPath, true);
-                File.SetCreationTime(destFullPath, _option.PreserveCreateTime ? item.CreateTime : DateTime.Now);
-                File.SetLastWriteTime(destFullPath, _option.PreserveLastModifyTime ? item.LastWriteTime : DateTime.Now);
-                File.SetLastAccessTime(destFullPath, DateTime.Now);
-
-                sw.Stop();
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                logItem.AddSegment(LogSegmentLevel.Verbose, " [");
-                logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}/s");
-                logItem.AddSegment(LogSegmentLevel.Verbose, "]");
+                logItem.AddSegment(LogSegmentLevel.Error, "  Failed to copy file.", ex);
                 AddLog(logItem);
             }
         }, DefaultExecutionDataflowBlockOptions);
@@ -175,22 +206,39 @@ public class SyncHandler : HandlerBase
         ActionBlock<FileSystemItem> block = new(item =>
         {
             string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
-            string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
-            if (!File.Exists(srcFullPath))
+            try
             {
-                if (!_option.DryRun)
+                string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+                if (!File.Exists(srcFullPath))
                 {
-                    if (File.Exists(item.FullPath))
+                    if (!_option.DryRun)
                     {
-                        File.Delete(item.FullPath);
+                        if (File.Exists(item.FullPath))
+                        {
+                            File.Delete(item.FullPath);
+                        }
                     }
-                }
 
-                LogItem logItem = new();
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    AddLog(logItem);
+                }
+            }
+            catch(Exception ex)
+            {
+                if(!_option.IgnoreError)
+                {
+                    throw;
+                }
+                LogItem logItem = new() { IsStdError = true };
                 logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete file.", ex);
                 AddLog(logItem);
             }
         }, DefaultExecutionDataflowBlockOptions);
@@ -226,22 +274,35 @@ public class SyncHandler : HandlerBase
         ActionBlock<FileSystemItem> block = new(item =>
         {
             string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
-            string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
-            if (!Directory.Exists(srcFullPath))
+            try
             {
-                if (!_option.DryRun)
+                string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+                if (!Directory.Exists(srcFullPath))
                 {
-                    if (Directory.Exists(item.FullPath))
+                    if (!_option.DryRun)
                     {
-                        Directory.Delete(item.FullPath, true);
+                        if (Directory.Exists(item.FullPath))
+                        {
+                            Directory.Delete(item.FullPath, true);
+                        }
                     }
-                }
 
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    AddLog(logItem);
+                }
+            }
+            catch(Exception ex)
+            {
                 LogItem logItem = new();
                 logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
                 logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
                 logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", ex);
                 AddLog(logItem);
             }
         }, DefaultExecutionDataflowBlockOptions);

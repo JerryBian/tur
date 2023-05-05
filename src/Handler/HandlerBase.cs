@@ -53,6 +53,7 @@ public abstract class HandlerBase : IAsyncDisposable
 
         LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Log file: {_logFile}");
+        AddLog(logItem2);
 
         await _consoleAppender.DisposeAsync();
         await _fileAppender.DisposeAsync();

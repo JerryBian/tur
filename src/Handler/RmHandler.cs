@@ -232,34 +232,38 @@ public class RmHandler : HandlerBase
         ActionBlock<FileSystemItem> block = new(item =>
         {
             bool noOp = true;
-            Exception error = null;
-            try
-            {
-                if (item.IsDir)
-                {
-                    if (Directory.Exists(item.FullPath))
-                    {
-                        noOp = false;
-                        Directory.Delete(item.FullPath, true);
-                    }
-                }
-                else
-                {
-                    if (File.Exists(item.FullPath))
-                    {
-                        noOp = false;
-                        File.Delete(item.FullPath);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw;
-                }
+            Exception error = item.Error;
 
-                error = ex;
+            if(!item.HasError)
+            {
+                try
+                {
+                    if (item.IsDir)
+                    {
+                        if (Directory.Exists(item.FullPath))
+                        {
+                            noOp = false;
+                            Directory.Delete(item.FullPath, true);
+                        }
+                    }
+                    else
+                    {
+                        if (File.Exists(item.FullPath))
+                        {
+                            noOp = false;
+                            File.Delete(item.FullPath);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (!_option.IgnoreError)
+                    {
+                        throw;
+                    }
+
+                    error = ex;
+                }
             }
 
             if (!noOp)

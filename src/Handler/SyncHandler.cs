@@ -37,6 +37,14 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> createDirBlock = new(item =>
         {
+            if(item.HasError)
+            {
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Error, "  Failed to create directory.", item.Error);
+                AddLog(logItem);
+                return;
+            }
+
             string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
             try
             {
@@ -273,6 +281,17 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> block = new(item =>
         {
+            if(item.HasError)
+            {
+                LogItem logItem = new();
+                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", item.Error);
+                AddLog(logItem);
+                return;
+            }
+
             string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
             try
             {

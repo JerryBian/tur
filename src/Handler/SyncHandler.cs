@@ -37,14 +37,6 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> createDirBlock = new(item =>
         {
-            if(item.HasError)
-            {
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Error, "  Failed to create directory.", item.Error);
-                AddLog(logItem);
-                return;
-            }
-
             string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
             try
             {
@@ -69,21 +61,26 @@ public class SyncHandler : HandlerBase
             }
             catch(Exception ex)
             {
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                logItem.AddSegment(LogSegmentLevel.Error, "Failed to create directory.", ex);
-                AddLog(logItem);
+                if(_option.IgnoreError)
+                {
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    logItem.AddSegment(LogSegmentLevel.Error, "Failed to create directory.", ex);
+                    AddLog(logItem);
+                    return;
+                }
+
+                throw;
             }
         }, DefaultExecutionDataflowBlockOptions);
 
         _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
 
         foreach (FileSystemItem item in FileUtil.EnumerateDirectories(
-            _option.SrcDir,
-            _option.IgnoreError))
+            _option.SrcDir))
         {
             _ = await createDirBlock.SendAsync(item);
         }
@@ -177,7 +174,6 @@ public class SyncHandler : HandlerBase
 
         foreach (FileSystemItem item in FileUtil.EnumerateFiles(
             _option.SrcDir,
-            _option.IgnoreError,
             _option.Includes?.ToList(),
             _option.Excludes?.ToList(),
             _option.CreateBefore,
@@ -251,7 +247,7 @@ public class SyncHandler : HandlerBase
             }
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateFiles(_option.DestDir, _option.IgnoreError))
+        foreach (FileSystemItem item in FileUtil.EnumerateFiles(_option.DestDir))
         {
             _ = await block.SendAsync(item);
         }
@@ -281,17 +277,6 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> block = new(item =>
         {
-            if(item.HasError)
-            {
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", item.Error);
-                AddLog(logItem);
-                return;
-            }
-
             string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
             try
             {
@@ -316,17 +301,23 @@ public class SyncHandler : HandlerBase
             }
             catch(Exception ex)
             {
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", ex);
-                AddLog(logItem);
+                if(_option.IgnoreError)
+                {
+                    LogItem logItem = new();
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
+                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
+                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
+                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
+                    logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", ex);
+                    AddLog(logItem);
+                    return;
+                }
+
+                throw;
             }
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(_option.DestDir, _option.IgnoreError))
+        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(_option.DestDir))
         {
             _ = await block.SendAsync(item);
         }

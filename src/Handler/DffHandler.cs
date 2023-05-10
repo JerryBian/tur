@@ -144,7 +144,6 @@ public class DffHandler : HandlerBase
 
         foreach (FileSystemItem item in FileUtil.EnumerateFiles(
             _option.Dir,
-            _option.IgnoreError,
             _option.Includes?.ToList(),
             _option.Excludes?.ToList(),
             _option.CreateBefore,

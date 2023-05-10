@@ -113,7 +113,6 @@ public class RmHandler : HandlerBase
             ActionBlock<FileSystemItem> block = CreateDeleteBlock();
             foreach (FileSystemItem file in FileUtil.EnumerateFiles(
                 _option.Destination,
-                _option.IgnoreError,
                 _option.Includes?.ToList(),
                 _option.Excludes?.ToList(),
                 _option.CreateBefore,
@@ -144,7 +143,6 @@ public class RmHandler : HandlerBase
             ActionBlock<FileSystemItem> block = CreateDeleteBlock();
             foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(
                 _option.Destination,
-                _option.IgnoreError,
                 _option.Includes?.ToList(),
                 _option.Excludes?.ToList()))
             {
@@ -185,15 +183,15 @@ public class RmHandler : HandlerBase
         AddLog(logItem1);
 
         ActionBlock<FileSystemItem> block = CreateDeleteBlock();
-        foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(_option.Destination, _option.IgnoreError))
+        foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(_option.Destination))
         {
-            if (!FileUtil.EnumerateFiles(dir.FullPath, _option.IgnoreError).Any())
+            if (!FileUtil.EnumerateFiles(dir.FullPath).Any())
             {
                 _ = await block.SendAsync(dir);
             }
         }
 
-        if (!FileUtil.EnumerateFiles(_option.Destination, _option.IgnoreError).Any())
+        if (!FileUtil.EnumerateFiles(_option.Destination).Any())
         {
             _ = await block.SendAsync(new FileSystemItem(true) { FullPath = _option.Destination });
         }
@@ -232,38 +230,35 @@ public class RmHandler : HandlerBase
         ActionBlock<FileSystemItem> block = new(item =>
         {
             bool noOp = true;
-            Exception error = item.Error;
+            Exception error = null;
 
-            if(!item.HasError)
+            try
             {
-                try
+                if (item.IsDir)
                 {
-                    if (item.IsDir)
+                    if (Directory.Exists(item.FullPath))
                     {
-                        if (Directory.Exists(item.FullPath))
-                        {
-                            noOp = false;
-                            Directory.Delete(item.FullPath, true);
-                        }
-                    }
-                    else
-                    {
-                        if (File.Exists(item.FullPath))
-                        {
-                            noOp = false;
-                            File.Delete(item.FullPath);
-                        }
+                        noOp = false;
+                        Directory.Delete(item.FullPath, true);
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    if (!_option.IgnoreError)
+                    if (File.Exists(item.FullPath))
                     {
-                        throw;
+                        noOp = false;
+                        File.Delete(item.FullPath);
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw;
+                }
 
-                    error = ex;
-                }
+                error = ex;
             }
 
             if (!noOp)

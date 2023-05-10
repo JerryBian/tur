@@ -27,10 +27,6 @@ namespace Tur.Model
 
         public DateTime LastWriteTime => _lastWriteTime.Value;
 
-        public bool HasError { get; set; }
-
-        public Exception Error { get; set; }
-
         private long GetSize()
         {
             return !IsDir ? new FileInfo(FullPath).Length : throw new NotImplementedException();

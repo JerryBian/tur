@@ -77,7 +77,6 @@ namespace Tur.Util
 
         public static IEnumerable<FileSystemItem> EnumerateFiles(
             string dir,
-            bool ignoreError = false,
             List<string> includes = null,
             List<string> excludes = null,
             DateTime createdBefore = default,
@@ -102,55 +101,35 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            IEnumerable<string> files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories);
-            using IEnumerator<string> e = files.GetEnumerator();
-            while (true)
+            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
             {
                 FileSystemItem entry = new(false);
-                try
+                entry.FullPath = file;
+                if (!m.Match(dir, file).HasMatches)
                 {
-                    if (!e.MoveNext())
-                    {
-                        break;
-                    };
-
-                    entry.FullPath = e.Current;
-                    if (!m.Match(dir, e.Current).HasMatches)
-                    {
-                        continue;
-                    }
-
-                    bool flag = true;
-                    if (createdBefore != default || createdAfter != default)
-                    {
-                        DateTime fileCreationTime = File.GetCreationTime(e.Current);
-                        DateTime min = createdAfter == default ? DateTime.MinValue : createdAfter;
-                        DateTime max = createdBefore == default ? DateTime.MaxValue : createdBefore;
-                        flag = fileCreationTime >= min && fileCreationTime <= max;
-                    }
-
-                    if (flag && (lastModifiedAfter != default || lastModifiedBefore != default))
-                    {
-                        DateTime fileLastModifyTime = File.GetLastWriteTime(e.Current);
-                        DateTime min = lastModifiedAfter == default ? DateTime.MinValue : lastModifiedAfter;
-                        DateTime max = lastModifiedBefore == default ? DateTime.MaxValue : lastModifiedBefore;
-                        flag = fileLastModifyTime >= min && fileLastModifyTime <= max;
-                    }
-
-                    if (!flag)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
-                catch (Exception ex)
-                {
-                    if (!ignoreError)
-                    {
-                        throw;
-                    }
 
-                    entry.HasError = true;
-                    entry.Error = ex;
+                bool flag = true;
+                if (createdBefore != default || createdAfter != default)
+                {
+                    DateTime fileCreationTime = File.GetCreationTime(file);
+                    DateTime min = createdAfter == default ? DateTime.MinValue : createdAfter;
+                    DateTime max = createdBefore == default ? DateTime.MaxValue : createdBefore;
+                    flag = fileCreationTime >= min && fileCreationTime <= max;
+                }
+
+                if (flag && (lastModifiedAfter != default || lastModifiedBefore != default))
+                {
+                    DateTime fileLastModifyTime = File.GetLastWriteTime(file);
+                    DateTime min = lastModifiedAfter == default ? DateTime.MinValue : lastModifiedAfter;
+                    DateTime max = lastModifiedBefore == default ? DateTime.MaxValue : lastModifiedBefore;
+                    flag = fileLastModifyTime >= min && fileLastModifyTime <= max;
+                }
+
+                if (!flag)
+                {
+                    continue;
                 }
 
                 yield return entry;
@@ -159,7 +138,6 @@ namespace Tur.Util
 
         public static IEnumerable<FileSystemItem> EnumerateDirectories(
             string dir,
-            bool ignoreError = false,
             List<string> includes = null,
             List<string> excludes = null)
         {
@@ -180,33 +158,13 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            IEnumerable<string> files = Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories);
-            using IEnumerator<string> e = files.GetEnumerator();
-            while (true)
+            foreach(var item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
             {
                 FileSystemItem entry = new(true);
-                try
+                entry.FullPath = item;
+                if (!m.Match(dir, item).HasMatches)
                 {
-                    if (!e.MoveNext())
-                    {
-                        break;
-                    };
-
-                    entry.FullPath = e.Current;
-                    if (!m.Match(dir, e.Current).HasMatches)
-                    {
-                        continue;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (!ignoreError)
-                    {
-                        throw;
-                    }
-
-                    entry.HasError = true;
-                    entry.Error = ex;
+                    continue;
                 }
 
                 yield return entry;

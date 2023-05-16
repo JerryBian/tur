@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+## 5.1
+
+- Add `--dry-run` option for `rm` command
+
 ## 5.0
 
 - Introduce TPL Dataflow

@@ -59,9 +59,9 @@ public class SyncHandler : HandlerBase
                 logItem.AddSegment(LogSegmentLevel.Default, relativePath);
                 AddLog(logItem);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(_option.IgnoreError)
+                if (_option.IgnoreError)
                 {
                     LogItem logItem = new();
                     logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
@@ -155,9 +155,9 @@ public class SyncHandler : HandlerBase
                     AddLog(logItem);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(!_option.IgnoreError)
+                if (!_option.IgnoreError)
                 {
                     throw;
                 }
@@ -231,9 +231,9 @@ public class SyncHandler : HandlerBase
                     AddLog(logItem);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(!_option.IgnoreError)
+                if (!_option.IgnoreError)
                 {
                     throw;
                 }
@@ -299,9 +299,9 @@ public class SyncHandler : HandlerBase
                     AddLog(logItem);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(_option.IgnoreError)
+                if (_option.IgnoreError)
                 {
                     LogItem logItem = new();
                     logItem.AddSegment(LogSegmentLevel.Verbose, "  [");

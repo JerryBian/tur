@@ -101,10 +101,12 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+            foreach (string file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
             {
-                FileSystemItem entry = new(false);
-                entry.FullPath = file;
+                FileSystemItem entry = new(false)
+                {
+                    FullPath = file
+                };
                 if (!m.Match(dir, file).HasMatches)
                 {
                     continue;
@@ -158,10 +160,12 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            foreach(var item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
+            foreach (string item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
             {
-                FileSystemItem entry = new(true);
-                entry.FullPath = item;
+                FileSystemItem entry = new(true)
+                {
+                    FullPath = item
+                };
                 if (!m.Match(dir, item).HasMatches)
                 {
                     continue;

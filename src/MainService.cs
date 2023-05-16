@@ -160,6 +160,9 @@ public class MainService
         Option<DateTime> createAfterOption = CreateCreateAfterOption();
         cmd.AddOption(createAfterOption);
 
+        Option<bool> dryRunOption = CreateDryRunOption();
+        cmd.AddOption(dryRunOption);
+
         Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
@@ -181,6 +184,7 @@ public class MainService
                 DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                bool dryRun = context.ParseResult.GetValueForOption(dryRunOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -202,7 +206,8 @@ public class MainService
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError
+                    IgnoreError = ignoreError,
+                    DryRun = dryRun
                 };
 
                 if (!string.IsNullOrEmpty(dest))
@@ -235,11 +240,7 @@ public class MainService
         Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
 
-        Option<bool> dryRunOption = new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
-        {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
-        };
+        Option<bool> dryRunOption = CreateDryRunOption();
         cmd.AddOption(dryRunOption);
 
         Option<bool> deleteOption =
@@ -411,6 +412,15 @@ public class MainService
     private Option<bool> CreateIgnoreErrorOption()
     {
         return new Option<bool>(new[] { "--ignore-error" }, "Ignore error during file processing.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private Option<bool> CreateDryRunOption()
+    {
+        return new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

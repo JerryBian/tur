@@ -15,4 +15,6 @@ public class RmOption : OptionBase
     public string FromFile { get; set; }
 
     public string Destination { get; set; }
+
+    public bool DryRun { get; set; }
 }

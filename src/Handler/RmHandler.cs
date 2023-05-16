@@ -38,7 +38,7 @@ public class RmHandler : HandlerBase
 
         LogItem logItem1 = new();
         logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting files in {_option.FromFile} ...");
+        logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in {_option.FromFile} ...");
         AddLog(logItem1);
 
         ActionBlock<FileSystemItem> block = CreateDeleteBlock();
@@ -80,7 +80,7 @@ public class RmHandler : HandlerBase
 
         LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-        logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted files in {_option.FromFile}.");
+        logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted files in {_option.FromFile}.");
         logItem2.AddLine();
         AddLog(logItem1);
     }
@@ -107,7 +107,7 @@ public class RmHandler : HandlerBase
         {
             LogItem logItem1 = new();
             logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-            logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting files in destination...");
+            logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in destination...");
             AddLog(logItem1);
 
             ActionBlock<FileSystemItem> block = CreateDeleteBlock();
@@ -128,7 +128,7 @@ public class RmHandler : HandlerBase
 
             LogItem logItem2 = new();
             logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-            logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted files in destination.");
+            logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted files in destination.");
             logItem2.AddLine();
             AddLog(logItem2);
         }
@@ -137,7 +137,7 @@ public class RmHandler : HandlerBase
         {
             LogItem logItem1 = new();
             logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-            logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting directories in destination...");
+            logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting directories in destination...");
             AddLog(logItem1);
 
             ActionBlock<FileSystemItem> block = CreateDeleteBlock();
@@ -154,7 +154,7 @@ public class RmHandler : HandlerBase
 
             LogItem logItem2 = new();
             logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-            logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted directories in destination.");
+            logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted directories in destination.");
             logItem2.AddLine();
             AddLog(logItem2);
         }
@@ -179,7 +179,7 @@ public class RmHandler : HandlerBase
 
         LogItem logItem1 = new();
         logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem1.AddSegment(LogSegmentLevel.Default, $" Deleting empty directory in destination...");
+        logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting empty directory in destination...");
         AddLog(logItem1);
 
         ActionBlock<FileSystemItem> block = CreateDeleteBlock();
@@ -201,7 +201,7 @@ public class RmHandler : HandlerBase
 
         LogItem logItem2 = new();
         logItem2.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem2.AddSegment(LogSegmentLevel.Default, $" Deleted empty directory in destination.");
+        logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted empty directory in destination.");
         AddLog(logItem2);
     }
 
@@ -239,7 +239,10 @@ public class RmHandler : HandlerBase
                     if (Directory.Exists(item.FullPath))
                     {
                         noOp = false;
-                        Directory.Delete(item.FullPath, true);
+                        if (!_option.DryRun)
+                        {
+                            Directory.Delete(item.FullPath, true);
+                        }
                     }
                 }
                 else
@@ -247,7 +250,10 @@ public class RmHandler : HandlerBase
                     if (File.Exists(item.FullPath))
                     {
                         noOp = false;
-                        File.Delete(item.FullPath);
+                        if (!_option.DryRun)
+                        {
+                            File.Delete(item.FullPath);
+                        }
                     }
                 }
             }
@@ -275,7 +281,7 @@ public class RmHandler : HandlerBase
                     logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
                 }
                 logItem.AddSegment(LogSegmentLevel.Verbose, "]");
-                logItem.AddSegment(LogSegmentLevel.Default, $" {item.FullPath}", error);
+                logItem.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}{item.FullPath}", error);
                 AddLog(logItem);
             }
         }, DefaultExecutionDataflowBlockOptions);

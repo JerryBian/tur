@@ -15,11 +15,11 @@ namespace Tur.Appender
         protected override void Handle(LogItem item)
         {
             TextWriter writer = item.IsStdError ? Console.Error : Console.Out;
-            var items = item.Unwrap();
-            for(var i=0;i<items.Count;i++)
+            System.Collections.Generic.List<LogSegmentItem> items = item.Unwrap();
+            for (int i = 0; i < items.Count; i++)
             {
-                var segment = items[i];
-                var isLastSegment = i == items.Count - 1;
+                LogSegmentItem segment = items[i];
+                bool isLastSegment = i == items.Count - 1;
                 if (segment.Level == LogSegmentLevel.Verbose)
                 {
                     WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkGray, isLastSegment);
@@ -59,7 +59,7 @@ namespace Tur.Appender
                 Console.ForegroundColor = foregroundColor.Value;
             }
 
-            if(writeLine && error == null)
+            if (writeLine && error == null)
             {
                 writer.WriteLine(message);
             }

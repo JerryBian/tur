@@ -41,9 +41,9 @@ public class RmHandler : HandlerBase
         logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in {_option.FromFile} ...");
         AddLog(logItem1);
 
-        ActionBlock<FileSystemItem> block = CreateDeleteBlock();
+        var block = CreateDeleteBlock();
 
-        await foreach (string item in File.ReadLinesAsync(_option.FromFile, CancellationToken))
+        await foreach (var item in File.ReadLinesAsync(_option.FromFile, CancellationToken))
         {
             FileSystemItem result = default;
 
@@ -110,8 +110,8 @@ public class RmHandler : HandlerBase
             logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in destination...");
             AddLog(logItem1);
 
-            ActionBlock<FileSystemItem> block = CreateDeleteBlock();
-            foreach (FileSystemItem file in FileUtil.EnumerateFiles(
+            var block = CreateDeleteBlock();
+            foreach (var file in FileUtil.EnumerateFiles(
                 _option.Destination,
                 _option.Includes?.ToList(),
                 _option.Excludes?.ToList(),
@@ -140,8 +140,8 @@ public class RmHandler : HandlerBase
             logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting directories in destination...");
             AddLog(logItem1);
 
-            ActionBlock<FileSystemItem> block = CreateDeleteBlock();
-            foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(
+            var block = CreateDeleteBlock();
+            foreach (var dir in FileUtil.EnumerateDirectories(
                 _option.Destination,
                 _option.Includes?.ToList(),
                 _option.Excludes?.ToList()))
@@ -182,8 +182,8 @@ public class RmHandler : HandlerBase
         logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting empty directory in destination...");
         AddLog(logItem1);
 
-        ActionBlock<FileSystemItem> block = CreateDeleteBlock();
-        foreach (FileSystemItem dir in FileUtil.EnumerateDirectories(_option.Destination))
+        var block = CreateDeleteBlock();
+        foreach (var dir in FileUtil.EnumerateDirectories(_option.Destination))
         {
             if (!FileUtil.EnumerateFiles(dir.FullPath).Any())
             {
@@ -229,7 +229,7 @@ public class RmHandler : HandlerBase
     {
         ActionBlock<FileSystemItem> block = new(item =>
         {
-            bool noOp = true;
+            var noOp = true;
             Exception error = null;
 
             try

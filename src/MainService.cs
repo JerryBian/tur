@@ -21,13 +21,13 @@ public class MainService
         RootCommand rootCommand = new("Command line tool to manage files.");
         rootCommand.AddAlias("tur");
 
-        Command dffCmd = CreateDffCommand();
+        var dffCmd = CreateDffCommand();
         rootCommand.AddCommand(dffCmd);
 
-        Command syncCmd = CreateSyncCommand();
+        var syncCmd = CreateSyncCommand();
         rootCommand.AddCommand(syncCmd);
 
-        Command rmCmd = CreateRmCommand();
+        var rmCmd = CreateRmCommand();
         rootCommand.AddCommand(rmCmd);
 
         return await rootCommand.InvokeAsync(_args);
@@ -36,28 +36,28 @@ public class MainService
     private Command CreateDffCommand()
     {
         Command cmd = new("dff", "Duplicate files finder.");
-        Option<string[]> includeOption = CreateIncludeOption();
+        var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        Option<string[]> excludeOption = CreateExcludeOption();
+        var excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        Option<string> outputOption = CreateOutputOption();
+        var outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        var lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
 
-        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        var lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
 
-        Option<DateTime> createAfterOption = CreateCreateAfterOption();
+        var createAfterOption = CreateCreateAfterOption();
         cmd.AddOption(createAfterOption);
 
-        Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
+        var createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
-        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
         Argument<string> dirArg = new("dir", "The target directory to analysis.")
@@ -68,15 +68,15 @@ public class MainService
 
         cmd.SetHandler(async (context) =>
         {
-            string dir = context.ParseResult.GetValueForArgument(dirArg);
-            string output = context.ParseResult.GetValueForOption(outputOption);
-            string[] includes = context.ParseResult.GetValueForOption(includeOption);
-            string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-            DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-            DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-            DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-            DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-            bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+            var dir = context.ParseResult.GetValueForArgument(dirArg);
+            var output = context.ParseResult.GetValueForOption(outputOption);
+            var includes = context.ParseResult.GetValueForOption(includeOption);
+            var excludes = context.ParseResult.GetValueForOption(excludeOption);
+            var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+            var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
+            var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
+            var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
+            var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             {
@@ -107,19 +107,19 @@ public class MainService
     private Command CreateRmCommand()
     {
         Command cmd = new("rm", "Remove files or directories.");
-        Option<string[]> includeOption = CreateIncludeOption();
+        var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        Option<string[]> excludeOption = CreateExcludeOption();
+        var excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        Option<string> outputOption = CreateOutputOption();
+        var outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        var lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
 
-        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        var lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
 
         Option<bool> fileOption = new(new[] { "-f", "--file" }, "Delete files only.")
@@ -157,34 +157,34 @@ public class MainService
         };
         cmd.AddArgument(destArg);
 
-        Option<DateTime> createAfterOption = CreateCreateAfterOption();
+        var createAfterOption = CreateCreateAfterOption();
         cmd.AddOption(createAfterOption);
 
-        Option<bool> dryRunOption = CreateDryRunOption();
+        var dryRunOption = CreateDryRunOption();
         cmd.AddOption(dryRunOption);
 
-        Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
+        var createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
-        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
         cmd.SetHandler(async (context) =>
             {
-                string output = context.ParseResult.GetValueForOption(outputOption);
-                string[] includes = context.ParseResult.GetValueForOption(includeOption);
-                string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-                string dest = context.ParseResult.GetValueForArgument(destArg);
-                bool file = context.ParseResult.GetValueForOption(fileOption);
-                bool dir = context.ParseResult.GetValueForOption(dirOption);
-                bool emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
-                string fromFile = context.ParseResult.GetValueForOption(fromFileOption);
-                DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-                DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-                DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-                DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-                bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-                bool dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+                var output = context.ParseResult.GetValueForOption(outputOption);
+                var includes = context.ParseResult.GetValueForOption(includeOption);
+                var excludes = context.ParseResult.GetValueForOption(excludeOption);
+                var dest = context.ParseResult.GetValueForArgument(destArg);
+                var file = context.ParseResult.GetValueForOption(fileOption);
+                var dir = context.ParseResult.GetValueForOption(dirOption);
+                var emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
+                var fromFile = context.ParseResult.GetValueForOption(fromFileOption);
+                var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+                var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
+                var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
+                var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
+                var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -225,22 +225,22 @@ public class MainService
     private Command CreateSyncCommand()
     {
         Command cmd = new("sync", "Synchronize files from source to destination directory.");
-        Option<string[]> includeOption = CreateIncludeOption();
+        var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
-        Option<string[]> excludeOption = CreateExcludeOption();
+        var excludeOption = CreateExcludeOption();
         cmd.AddOption(excludeOption);
 
-        Option<string> outputOption = CreateOutputOption();
+        var outputOption = CreateOutputOption();
         cmd.AddOption(outputOption);
 
-        Option<DateTime> lastModifyAfterOption = CreateLastModifyAfterOption();
+        var lastModifyAfterOption = CreateLastModifyAfterOption();
         cmd.AddOption(lastModifyAfterOption);
 
-        Option<DateTime> lastModifyBeforeOption = CreateLastModifyBeforeOption();
+        var lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
 
-        Option<bool> dryRunOption = CreateDryRunOption();
+        var dryRunOption = CreateDryRunOption();
         cmd.AddOption(dryRunOption);
 
         Option<bool> deleteOption =
@@ -271,10 +271,10 @@ public class MainService
         };
         cmd.AddArgument(destDirArg);
 
-        Option<DateTime> createAfterOption = CreateCreateAfterOption();
+        var createAfterOption = CreateCreateAfterOption();
         cmd.AddOption(createAfterOption);
 
-        Option<DateTime> createBeforeOption = CreateCreateBeforeOption();
+        var createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
 
         Option<bool> preserveCreateOption = new("--preserve-create", "Preserve creation time for destination file.")
@@ -289,26 +289,26 @@ public class MainService
         };
         cmd.AddOption(preserveLastModifyOption);
 
-        Option<bool> ignoreOption = CreateIgnoreErrorOption();
+        var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
         cmd.SetHandler(async (context) =>
             {
-                string output = context.ParseResult.GetValueForOption(outputOption);
-                string[] includes = context.ParseResult.GetValueForOption(includeOption);
-                string[] excludes = context.ParseResult.GetValueForOption(excludeOption);
-                bool delete = context.ParseResult.GetValueForOption(deleteOption);
-                bool dryRun = context.ParseResult.GetValueForOption(dryRunOption);
-                string srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
-                string destDir = context.ParseResult.GetValueForArgument(destDirArg);
-                bool sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
-                DateTime lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-                DateTime lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-                DateTime createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-                DateTime createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-                bool preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
-                bool preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
-                bool ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                var output = context.ParseResult.GetValueForOption(outputOption);
+                var includes = context.ParseResult.GetValueForOption(includeOption);
+                var excludes = context.ParseResult.GetValueForOption(excludeOption);
+                var delete = context.ParseResult.GetValueForOption(deleteOption);
+                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+                var srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
+                var destDir = context.ParseResult.GetValueForArgument(destDirArg);
+                var sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
+                var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
+                var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
+                var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
+                var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
+                var preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
+                var preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
+                var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
                 if (string.IsNullOrEmpty(output))
                 {

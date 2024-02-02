@@ -32,7 +32,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
 
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
@@ -50,7 +50,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
 
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         Assert.True(!Directory.GetFiles(_dir).Any());
@@ -68,7 +68,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
 
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
@@ -82,8 +82,8 @@ public class RmHandlerTest : TestBase
         _option.File = true;
         _option.Excludes = new[] { "**" };
         _ = await MockFileAsync(_dir);
-        string file = await MockFileAsync(_dir);
-        string deletionFileList = Path.GetTempFileName();
+        var file = await MockFileAsync(_dir);
+        var deletionFileList = Path.GetTempFileName();
         await File.WriteAllTextAsync(deletionFileList, file, new UTF8Encoding(false));
         _option.FromFile = deletionFileList;
         _ = MockSubDir(_dir, "test");
@@ -91,7 +91,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
 
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
@@ -108,14 +108,14 @@ public class RmHandlerTest : TestBase
         _ = MockSubDir(_dir, "test");
         _ = MockSubDir(_dir, "test2");
         _ = await MockFileAsync(_dir);
-        string file = await MockFileAsync(Path.Combine(_dir, "test2"));
-        string deletionFileList = Path.GetTempFileName();
+        var file = await MockFileAsync(Path.Combine(_dir, "test2"));
+        var deletionFileList = Path.GetTempFileName();
         await File.WriteAllTextAsync(deletionFileList, file, new UTF8Encoding(false));
         _option.FromFile = deletionFileList;
 
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
@@ -133,7 +133,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(_dir);
         _ = await MockFileAsync(_dir, fileName: "hello3", fileLength: 26);
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir, "*", SearchOption.AllDirectories));
@@ -146,7 +146,7 @@ public class RmHandlerTest : TestBase
         _option.Destination = GetRandomName();
         _option.IgnoreError = true;
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
         Assert.Equal(0, exitCode);
     }
 
@@ -162,7 +162,7 @@ public class RmHandlerTest : TestBase
         _ = await MockFileAsync(_dir);
         _ = await MockFileAsync(_dir, fileName: "hello3", fileLength: 26);
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir, "*", SearchOption.AllDirectories));
@@ -174,7 +174,7 @@ public class RmHandlerTest : TestBase
     {
         _option.FromFile = GetRandomName();
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(1, exitCode);
     }
@@ -190,10 +190,10 @@ public class RmHandlerTest : TestBase
         _ = MockSubDir(_dir, "test");
         _ = MockSubDir(_dir, "test2");
         _ = await MockFileAsync(_dir);
-        string file = await MockFileAsync(Path.Combine(_dir, "test2"));
-        string deletionFileList = Path.GetTempFileName();
-        string dir1 = Path.Combine(Path.GetTempPath(), GetRandomName());
-        string dir2 = Path.Combine(Path.GetTempPath(), GetRandomName());
+        var file = await MockFileAsync(Path.Combine(_dir, "test2"));
+        var deletionFileList = Path.GetTempFileName();
+        var dir1 = Path.Combine(Path.GetTempPath(), GetRandomName());
+        var dir2 = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(dir2);
         await File.WriteAllLinesAsync(deletionFileList, new[] { file, dir2, Environment.NewLine, dir1 },
             new UTF8Encoding(false));
@@ -201,7 +201,7 @@ public class RmHandlerTest : TestBase
 
         _ = await MockFileAsync(Path.Combine(_dir, "test"));
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
@@ -218,7 +218,7 @@ public class RmHandlerTest : TestBase
         _ = MockSubDir(_dir, "test2");
         _ = await MockFileAsync(_dir);
         await using RmHandler handler = new(_option, CancellationToken.None);
-        int exitCode = await handler.HandleAsync();
+        var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
         Assert.False(Directory.Exists(_dir));

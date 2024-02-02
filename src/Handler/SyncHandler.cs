@@ -37,10 +37,10 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> createDirBlock = new(item =>
         {
-            string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
+            var relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
             try
             {
-                string destFullPath = Path.Combine(_option.DestDir, relativePath);
+                var destFullPath = Path.Combine(_option.DestDir, relativePath);
 
                 if (Directory.Exists(destFullPath))
                 {
@@ -79,7 +79,7 @@ public class SyncHandler : HandlerBase
 
         _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
 
-        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(
+        foreach (var item in FileUtil.EnumerateDirectories(
             _option.SrcDir))
         {
             _ = await createDirBlock.SendAsync(item);
@@ -105,12 +105,12 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> copyBlock = new(async item =>
         {
-            string relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
-            string destFullPath = Path.Combine(_option.DestDir, relativePath);
+            var relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
+            var destFullPath = Path.Combine(_option.DestDir, relativePath);
 
             try
             {
-                Stopwatch sw = Stopwatch.StartNew();
+                var sw = Stopwatch.StartNew();
                 if (File.Exists(destFullPath))
                 {
                     if (item.Size == new FileInfo(destFullPath).Length)
@@ -172,7 +172,7 @@ public class SyncHandler : HandlerBase
             }
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateFiles(
+        foreach (var item in FileUtil.EnumerateFiles(
             _option.SrcDir,
             _option.Includes?.ToList(),
             _option.Excludes?.ToList(),
@@ -209,10 +209,10 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> block = new(item =>
         {
-            string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
+            var relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
             try
             {
-                string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+                var srcFullPath = Path.Combine(_option.SrcDir, relativePath);
                 if (!File.Exists(srcFullPath))
                 {
                     if (!_option.DryRun)
@@ -247,7 +247,7 @@ public class SyncHandler : HandlerBase
             }
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateFiles(_option.DestDir))
+        foreach (var item in FileUtil.EnumerateFiles(_option.DestDir))
         {
             _ = await block.SendAsync(item);
         }
@@ -277,10 +277,10 @@ public class SyncHandler : HandlerBase
 
         ActionBlock<FileSystemItem> block = new(item =>
         {
-            string relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
+            var relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
             try
             {
-                string srcFullPath = Path.Combine(_option.SrcDir, relativePath);
+                var srcFullPath = Path.Combine(_option.SrcDir, relativePath);
                 if (!Directory.Exists(srcFullPath))
                 {
                     if (!_option.DryRun)
@@ -317,7 +317,7 @@ public class SyncHandler : HandlerBase
             }
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateDirectories(_option.DestDir))
+        foreach (var item in FileUtil.EnumerateDirectories(_option.DestDir))
         {
             _ = await block.SendAsync(item);
         }

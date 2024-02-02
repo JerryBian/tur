@@ -19,7 +19,7 @@ public abstract class TestBase : IDisposable
 
     public byte[] GetRandomBytes(long length)
     {
-        byte[] bytes = new byte[length];
+        var bytes = new byte[length];
         _random.NextBytes(bytes);
         return bytes;
     }
@@ -33,7 +33,7 @@ public abstract class TestBase : IDisposable
         bytes ??= GetRandomBytes(fileLength);
         fileName ??= GetRandomName();
 
-        string fullPath = Path.Combine(dir, fileName);
+        var fullPath = Path.Combine(dir, fileName);
         await File.WriteAllBytesAsync(fullPath, bytes);
         return fullPath;
     }
@@ -41,7 +41,7 @@ public abstract class TestBase : IDisposable
     public string MockSubDir(string dir, string subDirName = null)
     {
         subDirName ??= GetRandomName();
-        string fullPath = Path.Combine(dir, subDirName);
+        var fullPath = Path.Combine(dir, subDirName);
         _ = Directory.CreateDirectory(fullPath);
         return fullPath;
     }
@@ -58,15 +58,15 @@ public abstract class TestBase : IDisposable
 
         _ = Directory.CreateDirectory(dir);
 
-        for (int i = 0; i < topDirs; i++)
+        for (var i = 0; i < topDirs; i++)
         {
-            string file = await MockFileAsync(dir, fileLength: fileLength);
+            var file = await MockFileAsync(dir, fileLength: fileLength);
             dirTree.Files.Add(Path.GetFileName(file));
         }
 
-        for (int j = 0; j < topDirs; j++)
+        for (var j = 0; j < topDirs; j++)
         {
-            string subDir = MockSubDir(dir);
+            var subDir = MockSubDir(dir);
             dirTree.SubDirTrees.Add(await MockDirAsync(subDir, topDirs, topFiles, nestingLevel - 1, fileLength));
         }
 

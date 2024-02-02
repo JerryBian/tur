@@ -34,7 +34,7 @@ namespace Tur.Appender
 
         private void Subscribe()
         {
-            foreach (LogItem item in _items.GetConsumingEnumerable())
+            foreach (var item in _items.GetConsumingEnumerable())
             {
                 try
                 {

@@ -15,7 +15,7 @@ namespace Tur.Util
 
         static FileUtil()
         {
-            GCMemoryInfo gcMemoryInfo = GC.GetGCMemoryInfo();
+            var gcMemoryInfo = GC.GetGCMemoryInfo();
             _maxBytesScan = Convert.ToInt32(Math.Min(gcMemoryInfo.TotalAvailableMemoryBytes / 10, 3 * 1024 * 1024));
         }
 
@@ -35,17 +35,17 @@ namespace Tur.Util
                     return false;
                 }
 
-                int maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
-                int iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
-                await using FileStream f1 = fileInfo1.OpenRead();
-                await using FileStream f2 = fileInfo2.OpenRead();
-                byte[] first = new byte[maxBytesScan];
-                byte[] second = new byte[maxBytesScan];
+                var maxBytesScan = Convert.ToInt32(Math.Min(_maxBytesScan, fileInfo1.Length));
+                var iterations = (int)Math.Ceiling((double)fileInfo1.Length / maxBytesScan);
+                await using var f1 = fileInfo1.OpenRead();
+                await using var f2 = fileInfo2.OpenRead();
+                var first = new byte[maxBytesScan];
+                var second = new byte[maxBytesScan];
 
-                for (int i = 0; i < iterations; i++)
+                for (var i = 0; i < iterations; i++)
                 {
-                    int firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken.None);
-                    int secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken.None);
+                    var firstBytes = await f1.ReadAsync(first.AsMemory(0, maxBytesScan), CancellationToken.None);
+                    var secondBytes = await f2.ReadAsync(second.AsMemory(0, maxBytesScan), CancellationToken.None);
                     if (firstBytes != secondBytes)
                     {
                         return false;
@@ -101,7 +101,7 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            foreach (string file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
             {
                 FileSystemItem entry = new(false)
                 {
@@ -112,20 +112,20 @@ namespace Tur.Util
                     continue;
                 }
 
-                bool flag = true;
+                var flag = true;
                 if (createdBefore != default || createdAfter != default)
                 {
-                    DateTime fileCreationTime = File.GetCreationTime(file);
-                    DateTime min = createdAfter == default ? DateTime.MinValue : createdAfter;
-                    DateTime max = createdBefore == default ? DateTime.MaxValue : createdBefore;
+                    var fileCreationTime = File.GetCreationTime(file);
+                    var min = createdAfter == default ? DateTime.MinValue : createdAfter;
+                    var max = createdBefore == default ? DateTime.MaxValue : createdBefore;
                     flag = fileCreationTime >= min && fileCreationTime <= max;
                 }
 
                 if (flag && (lastModifiedAfter != default || lastModifiedBefore != default))
                 {
-                    DateTime fileLastModifyTime = File.GetLastWriteTime(file);
-                    DateTime min = lastModifiedAfter == default ? DateTime.MinValue : lastModifiedAfter;
-                    DateTime max = lastModifiedBefore == default ? DateTime.MaxValue : lastModifiedBefore;
+                    var fileLastModifyTime = File.GetLastWriteTime(file);
+                    var min = lastModifiedAfter == default ? DateTime.MinValue : lastModifiedAfter;
+                    var max = lastModifiedBefore == default ? DateTime.MaxValue : lastModifiedBefore;
                     flag = fileLastModifyTime >= min && fileLastModifyTime <= max;
                 }
 
@@ -160,7 +160,7 @@ namespace Tur.Util
 
             excludes?.ForEach(x => m.AddExclude(x));
 
-            foreach (string item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
+            foreach (var item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
             {
                 FileSystemItem entry = new(true)
                 {

@@ -73,8 +73,8 @@ public abstract class HandlerBase : IAsyncDisposable
     public async Task<int> HandleAsync()
     {
         await WriteLogFileHeaderAsync();
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        int exitCode = await HandleInternalAsync();
+        var stopwatch = Stopwatch.StartNew();
+        var exitCode = await HandleInternalAsync();
         stopwatch.Stop();
 
         LogItem logItem = new();
@@ -85,8 +85,8 @@ public abstract class HandlerBase : IAsyncDisposable
 
     private async Task WriteLogFileHeaderAsync()
     {
-        Version version = Assembly.GetExecutingAssembly().GetName().Version;
-        string versionStr = version == null ? "1.0.0" : version.ToString(3);
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        var versionStr = version == null ? "1.0.0" : version.ToString(3);
         StringBuilder sb = new();
         _ = sb.AppendLine($"### Processed by tur {versionStr}");
         _ = sb.AppendLine($"### Command: tur {string.Join(" ", _option.RawArgs)}");

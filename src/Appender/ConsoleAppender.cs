@@ -14,12 +14,12 @@ namespace Tur.Appender
 
         protected override void Handle(LogItem item)
         {
-            TextWriter writer = item.IsStdError ? Console.Error : Console.Out;
-            System.Collections.Generic.List<LogSegmentItem> items = item.Unwrap();
-            for (int i = 0; i < items.Count; i++)
+            var writer = item.IsStdError ? Console.Error : Console.Out;
+            var items = item.Unwrap();
+            for (var i = 0; i < items.Count; i++)
             {
-                LogSegmentItem segment = items[i];
-                bool isLastSegment = i == items.Count - 1;
+                var segment = items[i];
+                var isLastSegment = i == items.Count - 1;
                 if (segment.Level == LogSegmentLevel.Verbose)
                 {
                     WriteMessage(writer, segment.Message, segment.Error, ConsoleColor.DarkGray, isLastSegment);

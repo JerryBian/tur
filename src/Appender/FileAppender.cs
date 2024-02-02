@@ -16,11 +16,11 @@ namespace Tur.Appender
 
         protected override void Handle(LogItem item)
         {
-            foreach (LogSegmentItem segment in item.Unwrap())
+            foreach (var segment in item.Unwrap())
             {
                 if (segment.Level == LogSegmentLevel.Error)
                 {
-                    string text = segment.Message;
+                    var text = segment.Message;
                     if (segment.Error != null)
                     {
                         text = $"{text}{Environment.NewLine}{segment.Error}{Environment.NewLine}";

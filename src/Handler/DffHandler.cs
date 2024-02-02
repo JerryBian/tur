@@ -24,13 +24,13 @@ public class DffHandler : HandlerBase
     {
         try
         {
-            List<List<FileSystemItem>> items = await ScanByLengthAsync();
-            TransformBlock<List<FileSystemItem>, DffResult> compareBlock = CreateCompareBlock();
-            ActionBlock<DffResult> sinkBlock = CreateSinkBlock();
+            var items = await ScanByLengthAsync();
+            var compareBlock = CreateCompareBlock();
+            var sinkBlock = CreateSinkBlock();
 
             _ = compareBlock.LinkTo(sinkBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
-            foreach (List<FileSystemItem> item in items)
+            foreach (var item in items)
             {
                 _ = await compareBlock.SendAsync(item);
             }
@@ -59,7 +59,7 @@ public class DffHandler : HandlerBase
                 return;
             }
 
-            long length = r.DuplicateItems.First().First().Size;
+            var length = r.DuplicateItems.First().First().Size;
             LogItem logItem = new();
             logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
             logItem.AddSegment(LogSegmentLevel.Verbose, "[");
@@ -68,9 +68,9 @@ public class DffHandler : HandlerBase
             logItem.AddSegment(LogSegmentLevel.Success, $" {r.DuplicateItems.Count} groups of duplicate:");
             logItem.AddLine();
 
-            foreach (List<FileSystemItem> items in r.DuplicateItems)
+            foreach (var items in r.DuplicateItems)
             {
-                foreach (FileSystemItem item in items)
+                foreach (var item in items)
                 {
                     logItem.AddSegment(LogSegmentLevel.Verbose, $"  {Constants.DotUnicode} ");
                     logItem.AddSegment(LogSegmentLevel.Default, item.FullPath);
@@ -89,17 +89,17 @@ public class DffHandler : HandlerBase
         TransformBlock<List<FileSystemItem>, DffResult> block = new(async items =>
         {
             List<HashSet<FileSystemItem>> matchedGroups = new();
-            for (int i = 0; i < items.Count - 1; i++)
+            for (var i = 0; i < items.Count - 1; i++)
             {
-                FileSystemItem item1 = items[i];
+                var item1 = items[i];
                 if (matchedGroups.Any(x => x.Contains(item1)))
                 {
                     continue;
                 }
 
-                for (int j = i + 1; j < items.Count; j++)
+                for (var j = i + 1; j < items.Count; j++)
                 {
-                    FileSystemItem item2 = items[j];
+                    var item2 = items[j];
                     if (matchedGroups.Any(x => x.Contains(item2)))
                     {
                         continue;
@@ -107,7 +107,7 @@ public class DffHandler : HandlerBase
 
                     if (await FileUtil.IsSameFileAsync(item1.FullPath, item2.FullPath, _option.IgnoreError))
                     {
-                        HashSet<FileSystemItem> group = matchedGroups.FirstOrDefault(x => x.Contains(item1));
+                        var group = matchedGroups.FirstOrDefault(x => x.Contains(item1));
                         if (group == null)
                         {
                             group = new HashSet<FileSystemItem>
@@ -142,7 +142,7 @@ public class DffHandler : HandlerBase
             });
         }, DefaultExecutionDataflowBlockOptions);
 
-        foreach (FileSystemItem item in FileUtil.EnumerateFiles(
+        foreach (var item in FileUtil.EnumerateFiles(
             _option.Dir,
             _option.Includes?.ToList(),
             _option.Excludes?.ToList(),

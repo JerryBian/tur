@@ -76,7 +76,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_3()
     {
-        DirTree dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
+        var dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
         _ = await MockFileAsync(dirTree.SubDirTrees[0].FullPath, fileName: "1.go");
         _ = await MockFileAsync(dirTree.SubDirTrees[0].SubDirTrees[2].FullPath, fileName: "2.js");
 
@@ -100,7 +100,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_4()
     {
-        DirTree dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
+        var dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
         _ = await MockFileAsync(dirTree.SubDirTrees[0].FullPath, fileName: "1.go");
         _ = await MockFileAsync(dirTree.SubDirTrees[0].SubDirTrees[2].FullPath, fileName: "2.js");
         _ = MockSubDir(Path.Combine(_destDir, "__1", "__2"));
@@ -127,7 +127,7 @@ public class SyncHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_5()
     {
-        DirTree dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
+        var dirTree = await MockDirAsync(_srcDir, 3, 5, 4, 128);
         _ = await MockFileAsync(dirTree.SubDirTrees[0].FullPath, fileName: "1.go");
         _ = await MockFileAsync(dirTree.SubDirTrees[0].SubDirTrees[2].FullPath, fileName: "2.js");
         _ = MockSubDir(Path.Combine(_destDir, "__1", "__2"));
@@ -233,10 +233,10 @@ public class SyncHandlerTest : TestBase
         await using SyncHandler handler = new(option, CancellationToken.None);
         _ = await handler.HandleAsync();
         Assert.True(Directory.Exists(_destDir));
-        string[] destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
+        var destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
         _ = Assert.Single(destFiles);
-        string destFile = destFiles.First();
-        string srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
+        var destFile = destFiles.First();
+        var srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
         Assert.NotEqual(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
         Assert.NotEqual(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
         Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));
@@ -258,10 +258,10 @@ public class SyncHandlerTest : TestBase
         await using SyncHandler handler = new(option, CancellationToken.None);
         _ = await handler.HandleAsync();
         Assert.True(Directory.Exists(_destDir));
-        string[] destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
+        var destFiles = Directory.GetFiles(_destDir, "*", SearchOption.AllDirectories);
         _ = Assert.Single(destFiles);
-        string destFile = destFiles.First();
-        string srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
+        var destFile = destFiles.First();
+        var srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
         Assert.Equal(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
         Assert.Equal(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
         Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));

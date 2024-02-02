@@ -10,10 +10,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7'
+          dotnet-version: '8'
       - name: Run test
         run: |
           dotnet test test/
@@ -23,10 +23,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7'
+          dotnet-version: '8'
       - name: Run test
         run: |
           dotnet test test/
@@ -36,10 +36,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7'
+          dotnet-version: '8'
       - name: Run test
         run: |
           dotnet test test/
@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -64,7 +64,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7'
+          dotnet-version: '4'
 
       - name: publish-nuget
         shell: pwsh
@@ -83,7 +83,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -96,9 +96,9 @@ jobs:
           APP_VERSION_ARR=(${APP_VERSION//./ })
           echo "APP_VERSION_LINK=${APP_VERSION_ARR[0]}${APP_VERSION_ARR[1]}" >> $GITHUB_ENV
 
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '7'
+          dotnet-version: '8'
 
       - name: Publish Binaries
         run: |
@@ -143,13 +143,12 @@ jobs:
           commit: master
           artifactErrorsFailBuild: true
           body: "Changes could be found at [CHANGELOG](https://github.com/JerryBian/tur/blob/master/CHANGELOG.md#${{ env.APP_VERSION_LINK }})."
-      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      - uses: dev-drprasad/delete-tag-and-release@v1.0
         name: Remove existing release for [latest]
         with:
           delete_release: true
           tag_name: latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ncipollo/release-action@v1
         name: publish release for [latest]
         with:

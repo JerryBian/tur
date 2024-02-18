@@ -35,8 +35,7 @@ public class RmHandlerTest : TestBase
         var exitCode = await handler.HandleAsync();
 
         Assert.Equal(0, exitCode);
-        Assert.True(!Directory.GetFiles(_dir).Any());
-        Assert.True(!Directory.GetDirectories(_dir).Any());
+        Assert.True(!Directory.Exists(_dir));
     }
 
     [Fact]
@@ -119,7 +118,7 @@ public class RmHandlerTest : TestBase
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
-        _ = Assert.Single(Directory.GetDirectories(_dir));
+        Assert.True(Directory.GetDirectories(_dir).Count() == 2);
     }
 
     [Fact]
@@ -147,7 +146,7 @@ public class RmHandlerTest : TestBase
         _option.IgnoreError = true;
         await using RmHandler handler = new(_option, CancellationToken.None);
         var exitCode = await handler.HandleAsync();
-        Assert.Equal(0, exitCode);
+        Assert.Equal(1, exitCode);
     }
 
     [Fact]
@@ -205,7 +204,7 @@ public class RmHandlerTest : TestBase
 
         Assert.Equal(0, exitCode);
         _ = Assert.Single(Directory.GetFiles(_dir));
-        _ = Assert.Single(Directory.GetDirectories(_dir));
+        Assert.True(Directory.GetDirectories(_dir).Count() == 2);
         Assert.False(Directory.Exists(dir2));
     }
 

@@ -18,7 +18,7 @@ public class DffHandlerTest : TestBase
     {
         _dir = Path.Combine(Path.GetTempPath(), GetRandomName());
         _ = Directory.CreateDirectory(_dir);
-        _option = new DffOption(Array.Empty<string>()) { Dir = _dir };
+        _option = new DffOption(Array.Empty<string>()) { Dir = [_dir] };
     }
 
     [Fact]
@@ -62,10 +62,10 @@ public class DffHandlerTest : TestBase
     [Fact]
     public async Task Test_Case_4()
     {
-        _option.Dir = Path.GetRandomFileName();
+        _option.Dir = [Path.GetRandomFileName()];
         await using DffHandler handler = new(_option, CancellationToken.None);
         var exitCode = await handler.HandleAsync();
-        Assert.Equal(0, exitCode);
+        Assert.Equal(1, exitCode);
         Assert.False(Directory.GetFiles(_dir, "*.txt").Any());
     }
 

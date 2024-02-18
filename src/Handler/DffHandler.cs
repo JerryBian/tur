@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Tur.Model;
+using Tur.Core;
+using Tur.Logging;
 using Tur.Option;
 using Tur.Util;
 
@@ -22,141 +23,102 @@ public class DffHandler : HandlerBase
 
     protected override async Task<int> HandleInternalAsync()
     {
-        try
+        var files = new ConcurrentBag<TurFileSystem>();
+        _ = Parallel.ForEach(_option.Dir, x =>
         {
-            var items = await ScanByLengthAsync();
-            var compareBlock = CreateCompareBlock();
-            var sinkBlock = CreateSinkBlock();
-
-            _ = compareBlock.LinkTo(sinkBlock, new DataflowLinkOptions { PropagateCompletion = true });
-
-            foreach (var item in items)
+            var buildOptions = CreateBuildOptions();
+            buildOptions.IncludeFileSize = buildOptions.IncludeFiles = true;
+            var builder = new TurSystemBuilder(x, buildOptions, CancellationToken);
+            foreach (var item in builder.Build())
             {
-                _ = await compareBlock.SendAsync(item);
+                files.Add(item);
+            }
+        });
+
+        if (CancellationToken.IsCancellationRequested)
+        {
+            return 0;
+        }
+
+        foreach (var item in files.GroupBy(x => x.Length))
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                break;
             }
 
-            compareBlock.Complete();
-            await sinkBlock.Completion;
-        }
-        catch (Exception ex)
-        {
-            LogItem logItem = new() { IsStdError = true };
-            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
-            AddLog(logItem);
+            var duplicateItems = await GetDuplicateFilesAsync(item.ToList());
+            if (duplicateItems.Count != 0)
+            {
+                var prefix = duplicateItems.Count > 1 ? "  " : "";
+                _logger.Write($"Found {duplicateItems.Count} duplicate groups:", TurLogLevel.Information, HumanUtil.GetSize(item.Key));
+                for (var i = 0; i < duplicateItems.Count; i++)
+                {
+                    if (duplicateItems.Count > 1)
+                    {
+                        _logger.Write($"  Group {i + 1}:", TurLogLevel.Information);
+                    }
 
-            return 1;
+                    foreach (var duplicateItem in duplicateItems[i])
+                    {
+                        _logger.Write($"  {prefix}{Constants.SquareUnicode} {duplicateItem.FullPath}");
+                    }
+                }
+            }
         }
 
         return 0;
     }
 
-    private ActionBlock<DffResult> CreateSinkBlock()
+    private async Task<List<HashSet<TurFileSystem>>> GetDuplicateFilesAsync(List<TurFileSystem> items)
     {
-        ActionBlock<DffResult> block = new(r =>
+        List<HashSet<TurFileSystem>> matchedGroups = new();
+        for (var i = 0; i < items.Count - 1; i++)
         {
-            if (!r.HasDuplicate)
+            var item1 = items[i];
+            if (matchedGroups.Any(x => x.Contains(item1)))
             {
-                return;
+                continue;
             }
 
-            var length = r.DuplicateItems.First().First().Size;
-            LogItem logItem = new();
-            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-            logItem.AddSegment(LogSegmentLevel.Verbose, "[");
-            logItem.AddSegment(LogSegmentLevel.Default, HumanUtil.GetSize(length));
-            logItem.AddSegment(LogSegmentLevel.Verbose, "]");
-            logItem.AddSegment(LogSegmentLevel.Success, $" {r.DuplicateItems.Count} groups of duplicate:");
-            logItem.AddLine();
-
-            foreach (var items in r.DuplicateItems)
+            for (var j = i + 1; j < items.Count; j++)
             {
-                foreach (var item in items)
-                {
-                    logItem.AddSegment(LogSegmentLevel.Verbose, $"  {Constants.DotUnicode} ");
-                    logItem.AddSegment(LogSegmentLevel.Default, item.FullPath);
-                    logItem.AddLine();
-                }
-            }
-
-            AddLog(logItem);
-        }, DefaultExecutionDataflowBlockOptions);
-
-        return block;
-    }
-
-    private TransformBlock<List<FileSystemItem>, DffResult> CreateCompareBlock()
-    {
-        TransformBlock<List<FileSystemItem>, DffResult> block = new(async items =>
-        {
-            List<HashSet<FileSystemItem>> matchedGroups = new();
-            for (var i = 0; i < items.Count - 1; i++)
-            {
-                var item1 = items[i];
-                if (matchedGroups.Any(x => x.Contains(item1)))
+                var item2 = items[j];
+                if (matchedGroups.Any(x => x.Contains(item2)))
                 {
                     continue;
                 }
 
-                for (var j = i + 1; j < items.Count; j++)
+                if (await FileUtil.IsSameFileAsync(item1.FullPath, item2.FullPath, _option.IgnoreError))
                 {
-                    var item2 = items[j];
-                    if (matchedGroups.Any(x => x.Contains(item2)))
+                    var group = matchedGroups.FirstOrDefault(x => x.Contains(item1));
+                    if (group == null)
                     {
-                        continue;
-                    }
-
-                    if (await FileUtil.IsSameFileAsync(item1.FullPath, item2.FullPath, _option.IgnoreError))
-                    {
-                        var group = matchedGroups.FirstOrDefault(x => x.Contains(item1));
-                        if (group == null)
+                        group = new HashSet<TurFileSystem>
                         {
-                            group = new HashSet<FileSystemItem>
-                            {
-                                item1
-                            };
-                            matchedGroups.Add(group);
-                        }
-
-                        _ = group.Add(item2);
+                            item1
+                        };
+                        matchedGroups.Add(group);
                     }
+
+                    _ = group.Add(item2);
                 }
             }
-
-            DffResult result = new();
-            matchedGroups.ForEach(x => result.DuplicateItems.Add(x.ToList()));
-            return result;
-        }, DefaultExecutionDataflowBlockOptions);
-
-        return block;
-    }
-
-    private async Task<List<List<FileSystemItem>>> ScanByLengthAsync()
-    {
-        ConcurrentDictionary<long, List<FileSystemItem>> result = new();
-        ActionBlock<FileSystemItem> block = new(item =>
-        {
-            _ = result.AddOrUpdate(item.Size, new List<FileSystemItem> { item }, (x, val) =>
-            {
-                val.Add(item);
-                return val;
-            });
-        }, DefaultExecutionDataflowBlockOptions);
-
-        foreach (var item in FileUtil.EnumerateFiles(
-            _option.Dir,
-            _option.Includes?.ToList(),
-            _option.Excludes?.ToList(),
-            _option.CreateBefore,
-            _option.CreateAfter,
-            _option.LastModifyBefore,
-            _option.LastModifyAfter))
-        {
-            _ = await block.SendAsync(item);
         }
 
-        block.Complete();
-        await block.Completion;
+        return matchedGroups;
+    }
 
-        return result.TakeWhile(x => x.Value.Count > 1).Select(x => x.Value).ToList();
+    protected override bool PreCheck()
+    {
+        _option.Dir ??= new[] { Path.GetFullPath(Environment.CurrentDirectory) };
+
+        for (var i = 0; i < _option.Dir.Length; i++)
+        {
+            _option.Dir[i] = Path.GetFullPath(_option.Dir[i]);
+            _logger.Write($"Target directory not exists: {_option.Dir[i]}");
+        }
+
+        return base.PreCheck();
     }
 }

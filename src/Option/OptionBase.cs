@@ -31,4 +31,6 @@ public abstract class OptionBase
     public string CmdName { get; }
 
     public bool IgnoreError { get; set; }
+
+    public bool NoUserInteractive { get; set; }
 }

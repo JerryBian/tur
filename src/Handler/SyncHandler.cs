@@ -1,23 +1,15 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
+using Tur.Core;
 using Tur.Extension;
-using Tur.Model;
+using Tur.Logging;
 using Tur.Option;
 using Tur.Util;
 
 namespace Tur.Handler;
 
-/// <summary>
-///     1. Create directory structure in destination
-///     2. Copy filtered files to destination
-///     3. If -d/--delete, remove any file not in source
-///     4. If -d/--delete, remove any directory not in source
-/// </summary>
 public class SyncHandler : HandlerBase
 {
     private readonly SyncOption _option;
@@ -27,336 +19,133 @@ public class SyncHandler : HandlerBase
         _option = option;
     }
 
-    private async Task CreateDestDirsAsync()
+    protected override bool PreCheck()
     {
-        LogItem logItem = new();
-        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem.AddSegment(LogSegmentLevel.Default, "Creating directories in destination...");
-        logItem.AddLine();
-        AddLog(logItem);
-
-        ActionBlock<FileSystemItem> createDirBlock = new(item =>
+        _option.SrcDir = Path.GetFullPath(_option.SrcDir);
+        if (!Directory.Exists(_option.SrcDir))
         {
-            var relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
-            try
-            {
-                var destFullPath = Path.Combine(_option.DestDir, relativePath);
-
-                if (Directory.Exists(destFullPath))
-                {
-                    return;
-                }
-
-                if (!_option.DryRun)
-                {
-                    _ = Directory.CreateDirectory(destFullPath);
-                }
-
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                AddLog(logItem);
-            }
-            catch (Exception ex)
-            {
-                if (_option.IgnoreError)
-                {
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    logItem.AddSegment(LogSegmentLevel.Error, "Failed to create directory.", ex);
-                    AddLog(logItem);
-                    return;
-                }
-
-                throw;
-            }
-        }, DefaultExecutionDataflowBlockOptions);
-
-        _ = await createDirBlock.SendAsync(new FileSystemItem(true) { FullPath = _option.DestDir });
-
-        foreach (var item in FileUtil.EnumerateDirectories(
-            _option.SrcDir))
-        {
-            _ = await createDirBlock.SendAsync(item);
+            _logger.Write($"Source directory not exists: {_option.SrcDir}", TurLogLevel.Error);
+            return false;
         }
 
-        createDirBlock.Complete();
-        await createDirBlock.Completion;
+        _option.DestDir = Path.GetFullPath(_option.DestDir);
+        _ = Directory.CreateDirectory(_option.DestDir);
 
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem2.AddSegment(LogSegmentLevel.Default, "Created directories in destination.");
-        logItem2.AddLine();
-        AddLog(logItem2);
-    }
-
-    private async Task CopyFilesAsync()
-    {
-        LogItem logItem = new();
-        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem.AddSegment(LogSegmentLevel.Default, "Copying files from source to destination...");
-        logItem.AddLine();
-        AddLog(logItem);
-
-        ActionBlock<FileSystemItem> copyBlock = new(async item =>
-        {
-            var relativePath = Path.GetRelativePath(_option.SrcDir, item.FullPath);
-            var destFullPath = Path.Combine(_option.DestDir, relativePath);
-
-            try
-            {
-                var sw = Stopwatch.StartNew();
-                if (File.Exists(destFullPath))
-                {
-                    if (item.Size == new FileInfo(destFullPath).Length)
-                    {
-                        if (_option.SizeOnly)
-                        {
-                            return;
-                        }
-                    }
-
-                    if (await FileUtil.IsSameFileAsync(item.FullPath, destFullPath, _option.IgnoreError))
-                    {
-                        return;
-                    }
-                }
-
-                if (_option.DryRun)
-                {
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    AddLog(logItem);
-                }
-                else
-                {
-                    File.Copy(item.FullPath, destFullPath, true);
-                    File.SetCreationTime(destFullPath, _option.PreserveCreateTime ? item.CreateTime : DateTime.Now);
-                    File.SetLastWriteTime(destFullPath, _option.PreserveLastModifyTime ? item.LastWriteTime : DateTime.Now);
-                    File.SetLastAccessTime(destFullPath, DateTime.Now);
-
-                    sw.Stop();
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, " [");
-                    logItem.AddSegment(LogSegmentLevel.Success, $"{HumanUtil.GetSize(item.Size)}, {sw.Elapsed.Human()}, {(item.Size / sw.Elapsed.TotalSeconds).SizeHuman()}/s");
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "]");
-                    AddLog(logItem);
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw;
-                }
-
-                LogItem logItem = new() { IsStdError = true };
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                logItem.AddSegment(LogSegmentLevel.Error, "  Failed to copy file.", ex);
-                AddLog(logItem);
-            }
-        }, DefaultExecutionDataflowBlockOptions);
-
-        foreach (var item in FileUtil.EnumerateFiles(
-            _option.SrcDir,
-            _option.Includes?.ToList(),
-            _option.Excludes?.ToList(),
-            _option.CreateBefore,
-            _option.CreateAfter,
-            _option.LastModifyBefore,
-            _option.LastModifyAfter))
-        {
-            _ = await copyBlock.SendAsync(item);
-        }
-
-        copyBlock.Complete();
-        await copyBlock.Completion;
-
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem2.AddSegment(LogSegmentLevel.Default, "Copied files from source to destination.");
-        logItem2.AddLine();
-        AddLog(logItem2);
-    }
-
-    private async Task CleanDestFilesAsync()
-    {
-        if (!_option.Delete)
-        {
-            return;
-        }
-
-        LogItem logItem = new();
-        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem.AddSegment(LogSegmentLevel.Default, "Cleaning extra files in destination...");
-        logItem.AddLine();
-        AddLog(logItem);
-
-        ActionBlock<FileSystemItem> block = new(item =>
-        {
-            var relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
-            try
-            {
-                var srcFullPath = Path.Combine(_option.SrcDir, relativePath);
-                if (!File.Exists(srcFullPath))
-                {
-                    if (!_option.DryRun)
-                    {
-                        if (File.Exists(item.FullPath))
-                        {
-                            File.Delete(item.FullPath);
-                        }
-                    }
-
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    AddLog(logItem);
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw;
-                }
-                LogItem logItem = new() { IsStdError = true };
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete file.", ex);
-                AddLog(logItem);
-            }
-        }, DefaultExecutionDataflowBlockOptions);
-
-        foreach (var item in FileUtil.EnumerateFiles(_option.DestDir))
-        {
-            _ = await block.SendAsync(item);
-        }
-
-        block.Complete();
-        await block.Completion;
-
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem2.AddSegment(LogSegmentLevel.Default, "Cleaned extra files in destination...");
-        logItem2.AddLine();
-        AddLog(logItem2);
-    }
-
-    private async Task CleanDestDirsAsync()
-    {
-        if (!_option.Delete)
-        {
-            return;
-        }
-
-        LogItem logItem = new();
-        logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem.AddSegment(LogSegmentLevel.Default, "Cleaning extra directories in destination...");
-        logItem.AddLine();
-        AddLog(logItem);
-
-        ActionBlock<FileSystemItem> block = new(item =>
-        {
-            var relativePath = Path.GetRelativePath(_option.DestDir, item.FullPath);
-            try
-            {
-                var srcFullPath = Path.Combine(_option.SrcDir, relativePath);
-                if (!Directory.Exists(srcFullPath))
-                {
-                    if (!_option.DryRun)
-                    {
-                        if (Directory.Exists(item.FullPath))
-                        {
-                            Directory.Delete(item.FullPath, true);
-                        }
-                    }
-
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    AddLog(logItem);
-                }
-            }
-            catch (Exception ex)
-            {
-                if (_option.IgnoreError)
-                {
-                    LogItem logItem = new();
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.XUnicode);
-                    logItem.AddSegment(LogSegmentLevel.Verbose, "] ");
-                    logItem.AddSegment(LogSegmentLevel.Default, relativePath);
-                    logItem.AddSegment(LogSegmentLevel.Error, "Failed to delete directory.", ex);
-                    AddLog(logItem);
-                    return;
-                }
-
-                throw;
-            }
-        }, DefaultExecutionDataflowBlockOptions);
-
-        foreach (var item in FileUtil.EnumerateDirectories(_option.DestDir))
-        {
-            _ = await block.SendAsync(item);
-        }
-
-        block.Complete();
-        await block.Completion;
-
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} ");
-        logItem2.AddSegment(LogSegmentLevel.Default, "Cleaned extra directories in destination...");
-        logItem2.AddLine();
-        AddLog(logItem2);
+        return true;
     }
 
     protected override async Task<int> HandleInternalAsync()
     {
-        try
-        {
-            LogItem logItem = new();
-            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Src: ");
-            logItem.AddSegment(LogSegmentLevel.Default, _option.SrcDir);
-            logItem.AddLine();
-            logItem.AddSegment(LogSegmentLevel.Verbose, $"{Constants.ArrowUnicode} Dest: ");
-            logItem.AddSegment(LogSegmentLevel.Default, _option.DestDir);
-            logItem.AddLine();
-            AddLog(logItem);
+        var buildOptions = CreateBuildOptions();
+        buildOptions.IncludeDirectories = buildOptions.IncludeFiles = true;
+        buildOptions.IncludeFileSize = true;
+        buildOptions.IncludeAttributes = true;
+        var suffix = _option.DryRun ? "DRY RUN" : "";
 
-            await CreateDestDirsAsync();
-            await CopyFilesAsync();
-            await CleanDestFilesAsync();
-            await CleanDestDirsAsync();
+        var builder = new TurSystemBuilder(_option.SrcDir, buildOptions, CancellationToken);
+        foreach (var srcItem in builder.Build())
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            var destItem = Path.Combine(_option.DestDir, srcItem.RelativePath);
+            if (!srcItem.IsDirectory)
+            {
+                if (File.Exists(destItem))
+                {
+                    if (_option.SizeOnly && destItem.Length == new FileInfo(destItem).Length)
+                    {
+                        _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Skip, suffix);
+                        continue;
+                    }
+
+                    if (await FileUtil.IsSameFileAsync(srcItem.FullPath, destItem, _option.IgnoreError))
+                    {
+                        _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Skip, suffix);
+                        continue;
+                    }
+                }
+
+                var destItemDir = Path.GetDirectoryName(destItem);
+                if (!string.IsNullOrEmpty(destItemDir) && !_option.DryRun)
+                {
+                    _ = Directory.CreateDirectory(destItemDir);
+                }
+
+                var sw = Stopwatch.StartNew();
+                if (!_option.DryRun)
+                {
+                    File.Copy(srcItem.FullPath, destItem, true);
+                    File.SetCreationTime(destItem, srcItem.CreationTime.Value);
+                    File.SetLastWriteTime(destItem, srcItem.LastModifyTime.Value);
+                }
+                sw.Stop();
+                _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, $"{HumanUtil.GetSize(srcItem.Length)}, {sw.Elapsed.Human()}{(_option.DryRun ? ", " + suffix : "")}");
+            }
+            else
+            {
+                if (!_option.DryRun)
+                {
+                    _ = Directory.CreateDirectory(destItem);
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            LogItem logItem = new() { IsStdError = true };
-            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
-            AddLog(logItem);
 
-            return 1;
+        if (CancellationToken.IsCancellationRequested)
+        {
+            return 0;
+        }
+
+        if (_option.Delete)
+        {
+            buildOptions = new TurBuildOptions
+            {
+                IgnoreError = _option.IgnoreError,
+                IncludeFiles = true,
+                IncludeDirectories = true
+            };
+            builder = new TurSystemBuilder(_option.DestDir, buildOptions, CancellationToken);
+            foreach (var destItem in builder.Build())
+            {
+                if (CancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var srcItem = Path.Combine(_option.SrcDir, destItem.RelativePath);
+                if (destItem.IsDirectory)
+                {
+                    if (!Directory.Exists(srcItem))
+                    {
+                        if (_option.DryRun)
+                        {
+                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED, DRY RUN");
+                        }
+                        else
+                        {
+                            Directory.Delete(destItem.FullPath);
+                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED");
+                        }
+                    }
+                }
+                else
+                {
+                    if (!File.Exists(srcItem))
+                    {
+                        if (_option.DryRun)
+                        {
+                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "F, DEST REMOVED, DRY RUN");
+                        }
+                        else
+                        {
+                            File.Delete(destItem.FullPath);
+                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED");
+                        }
+                    }
+                }
+            }
         }
 
         return 0;

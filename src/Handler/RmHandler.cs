@@ -3,10 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Tur.Model;
+using Tur.Core;
+using Tur.Logging;
 using Tur.Option;
-using Tur.Util;
 
 namespace Tur.Handler;
 
@@ -21,238 +20,99 @@ public class RmHandler : HandlerBase
 
     private async Task DeleteFromFileListAsync()
     {
-        if (string.IsNullOrEmpty(_option.FromFile))
+        var items = await File.ReadAllLinesAsync(_option.FromFile, CancellationToken);
+        foreach (var fullPath in items.Where(x => !string.IsNullOrWhiteSpace(x)).Select(Path.GetFullPath).OrderByDescending(x => x))
         {
-            return;
-        }
-
-        if (!File.Exists(_option.FromFile))
-        {
-            if (_option.IgnoreError)
+            if (CancellationToken.IsCancellationRequested)
             {
-                return;
+                break;
             }
-
-            throw new Exception($"The file specifed by --from-file({_option.FromFile}) not exists.");
-        }
-
-        LogItem logItem1 = new();
-        logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in {_option.FromFile} ...");
-        AddLog(logItem1);
-
-        var block = CreateDeleteBlock();
-
-        await foreach (var item in File.ReadLinesAsync(_option.FromFile, CancellationToken))
-        {
-            FileSystemItem result = default;
-
-            if (File.Exists(item))
-            {
-                result = new FileSystemItem(false)
-                {
-                    FullPath = Path.GetFullPath(item)
-                };
-            }
-            else if (Directory.Exists(item))
-            {
-                result = new FileSystemItem(true)
-                {
-                    FullPath = Path.GetFullPath(item)
-                };
-            }
-
-            if (result == default)
-            {
-                if (!_option.IgnoreError)
-                {
-                    throw new Exception($"Invalid path in file specified by --from-file({_option.FromFile}).");
-                }
-            }
-            else
-            {
-                _ = await block.SendAsync(result);
-            }
-        }
-
-        block.Complete();
-        await block.Completion;
-
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-        logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted files in {_option.FromFile}.");
-        logItem2.AddLine();
-        AddLog(logItem1);
-    }
-
-    private async Task DeleteFromFilterAsync()
-    {
-        if (string.IsNullOrEmpty(_option.Destination))
-        {
-            return;
-        }
-
-        if (!Directory.Exists(_option.Destination))
-        {
-            if (_option.IgnoreError)
-            {
-                return;
-            }
-
-            throw new Exception($"The directory specifed({_option.Destination}) not exists.");
-        }
-
-
-        if (_option.File || (!_option.File && !_option.Dir))
-        {
-            LogItem logItem1 = new();
-            logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-            logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting files in destination...");
-            AddLog(logItem1);
-
-            var block = CreateDeleteBlock();
-            foreach (var file in FileUtil.EnumerateFiles(
-                _option.Destination,
-                _option.Includes?.ToList(),
-                _option.Excludes?.ToList(),
-                _option.CreateBefore,
-                _option.CreateAfter,
-                _option.LastModifyBefore,
-                _option.LastModifyAfter))
-            {
-                _ = await block.SendAsync(file);
-            }
-
-            block.Complete();
-            await block.Completion;
-
-            LogItem logItem2 = new();
-            logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-            logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted files in destination.");
-            logItem2.AddLine();
-            AddLog(logItem2);
-        }
-
-        if (_option.Dir || (!_option.File && !_option.Dir))
-        {
-            LogItem logItem1 = new();
-            logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-            logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting directories in destination...");
-            AddLog(logItem1);
-
-            var block = CreateDeleteBlock();
-            foreach (var dir in FileUtil.EnumerateDirectories(
-                _option.Destination,
-                _option.Includes?.ToList(),
-                _option.Excludes?.ToList()))
-            {
-                _ = await block.SendAsync(dir);
-            }
-
-            block.Complete();
-            await block.Completion;
-
-            LogItem logItem2 = new();
-            logItem2.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-            logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted directories in destination.");
-            logItem2.AddLine();
-            AddLog(logItem2);
-        }
-    }
-
-    private async Task DeleteFromEmptyDirAsync()
-    {
-        if (!_option.EmptyDir || string.IsNullOrEmpty(_option.Destination))
-        {
-            return;
-        }
-
-        if (!Directory.Exists(_option.Destination))
-        {
-            if (_option.IgnoreError)
-            {
-                return;
-            }
-
-            throw new Exception($"The directory specifed({_option.FromFile}) not exists.");
-        }
-
-        LogItem logItem1 = new();
-        logItem1.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem1.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleting empty directory in destination...");
-        AddLog(logItem1);
-
-        var block = CreateDeleteBlock();
-        foreach (var dir in FileUtil.EnumerateDirectories(_option.Destination))
-        {
-            if (!FileUtil.EnumerateFiles(dir.FullPath).Any())
-            {
-                _ = await block.SendAsync(dir);
-            }
-        }
-
-        if (!FileUtil.EnumerateFiles(_option.Destination).Any())
-        {
-            _ = await block.SendAsync(new FileSystemItem(true) { FullPath = _option.Destination });
-        }
-
-        block.Complete();
-        await block.Completion;
-
-        LogItem logItem2 = new();
-        logItem2.AddSegment(LogSegmentLevel.Verbose, Constants.ArrowUnicode);
-        logItem2.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}Deleted empty directory in destination.");
-        AddLog(logItem2);
-    }
-
-    protected override async Task<int> HandleInternalAsync()
-    {
-        try
-        {
-            await DeleteFromFileListAsync();
-            await DeleteFromFilterAsync();
-            await DeleteFromEmptyDirAsync();
-        }
-        catch (Exception ex)
-        {
-            LogItem logItem = new() { IsStdError = true };
-            logItem.AddSegment(LogSegmentLevel.Error, "Unexpected error.", ex);
-            AddLog(logItem);
-
-            return 1;
-        }
-
-        return 0;
-    }
-
-    private ActionBlock<FileSystemItem> CreateDeleteBlock()
-    {
-        ActionBlock<FileSystemItem> block = new(item =>
-        {
-            var noOp = true;
-            Exception error = null;
 
             try
             {
-                if (item.IsDir)
+                if (File.Exists(fullPath))
                 {
-                    if (Directory.Exists(item.FullPath))
+                    if (_option.DryRun)
                     {
-                        noOp = false;
-                        if (!_option.DryRun)
+                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F, DRY RUN");
+                    }
+                    else
+                    {
+                        File.Delete(fullPath);
+                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F");
+                    }
+                }
+                else if (Directory.Exists(fullPath))
+                {
+                    if (_option.DryRun)
+                    {
+                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D, DRY RUN");
+                    }
+                    else
+                    {
+                        Directory.Delete(fullPath, true);
+                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D");
+                    }
+                }
+                else
+                {
+                    _logger.Write($"{fullPath}", Logging.TurLogLevel.Warning, LogConstants.Skip, _option.DryRun ? "DRY RUN" : "");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_option.IgnoreError)
+                {
+                    throw;
+                }
+
+                _logger.Write($"This item is skipped due to error: {fullPath}", TurLogLevel.Warning, error: ex);
+            }
+        }
+    }
+
+    private void DeleteFromFilter()
+    {
+        var buildOption = CreateBuildOptions();
+        buildOption.IncludeFiles = true;
+        buildOption.IncludeDirectories = _option.Dir || _option.EmptyDir;
+        var builder = new TurSystemBuilder(_option.Destination, buildOption, CancellationToken);
+        foreach (var item in builder.Build())
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                if (item.IsDirectory)
+                {
+                    if (_option.Dir || (_option.EmptyDir && !Directory.EnumerateFileSystemEntries(item.FullPath, "*", SearchOption.AllDirectories).Any()))
+                    {
+                        if (_option.DryRun)
+                        {
+                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D, DRY RUN");
+                        }
+                        else
                         {
                             Directory.Delete(item.FullPath, true);
+                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D");
                         }
                     }
                 }
                 else
                 {
-                    if (File.Exists(item.FullPath))
+                    if (_option.File)
                     {
-                        noOp = false;
-                        if (!_option.DryRun)
+                        if (_option.DryRun)
+                        {
+                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F, DRY RUN");
+                        }
+                        else
                         {
                             File.Delete(item.FullPath);
+                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F");
                         }
                     }
                 }
@@ -264,28 +124,61 @@ public class RmHandler : HandlerBase
                     throw;
                 }
 
-                error = ex;
+                _logger.Write($"This item is skipped due to error: {item.RelativePath}", TurLogLevel.Warning, error: ex);
             }
+        }
 
-            if (!noOp)
+        if (!Directory.EnumerateFileSystemEntries(_option.Destination, "*", SearchOption.TopDirectoryOnly).Any())
+        {
+            Directory.Delete(_option.Destination);
+        }
+    }
+
+    protected override bool PreCheck()
+    {
+        if (!_option.Dir && !_option.File)
+        {
+            _option.Dir = _option.File = true;
+        }
+
+        if (string.IsNullOrEmpty(_option.Destination) && string.IsNullOrEmpty(_option.FromFile))
+        {
+            _logger.Write("Either --from-file or destination directory must be provided.", TurLogLevel.Error);
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(_option.Destination))
+        {
+            _option.Destination = Path.GetFullPath(_option.Destination);
+            if (!Directory.Exists(_option.Destination))
             {
-                LogItem logItem = new();
-                logItem.AddSegment(LogSegmentLevel.Verbose, "  [");
-                if (error != null)
-                {
-                    logItem.AddSegment(LogSegmentLevel.Error, Constants.XUnicode);
-                }
-                else
-                {
-                    logItem.IsStdError = true;
-                    logItem.AddSegment(LogSegmentLevel.Success, Constants.CheckUnicode);
-                }
-                logItem.AddSegment(LogSegmentLevel.Verbose, "]");
-                logItem.AddSegment(LogSegmentLevel.Default, $" {(_option.DryRun ? "[Dry] " : "")}{item.FullPath}", error);
-                AddLog(logItem);
+                _logger.Write($"Target directory not exists: {_option.Destination}.", TurLogLevel.Error);
+                return false;
             }
-        }, DefaultExecutionDataflowBlockOptions);
+        }
 
-        return block;
+        if (!string.IsNullOrEmpty(_option.FromFile))
+        {
+            _option.FromFile = Path.GetFullPath(_option.FromFile);
+            if (!File.Exists(_option.FromFile))
+            {
+                _logger.Write($"File list provided via --from-file not exists: {_option.Destination}.", TurLogLevel.Error);
+                return false;
+            }
+        }
+
+        return base.PreCheck();
+    }
+
+    protected override async Task<int> HandleInternalAsync()
+    {
+        if (!string.IsNullOrEmpty(_option.FromFile))
+        {
+            await DeleteFromFileListAsync();
+        }
+
+        DeleteFromFilter();
+
+        return 0;
     }
 }

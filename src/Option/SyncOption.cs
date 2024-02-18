@@ -15,8 +15,4 @@ public class SyncOption : OptionBase
     public string DestDir { get; set; }
 
     public bool SizeOnly { get; set; }
-
-    public bool PreserveCreateTime { get; set; }
-
-    public bool PreserveLastModifyTime { get; set; }
 }

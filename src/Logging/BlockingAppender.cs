@@ -1,18 +1,18 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using Tur.Model;
 
-namespace Tur.Appender
+namespace Tur.Logging
 {
     public abstract class BlockingAppender : IAppender
     {
         private readonly Thread _thread;
-        private readonly BlockingCollection<LogItem> _items;
+        private readonly BlockingCollection<TurLogItem> _items;
 
         public BlockingAppender()
         {
-            _items = new BlockingCollection<LogItem>(Constants.LogItemsCapacity);
+            _items = new BlockingCollection<TurLogItem>(Constants.LogItemsCapacity);
             _thread = new Thread(Subscribe)
             {
                 IsBackground = true,
@@ -21,13 +21,21 @@ namespace Tur.Appender
             _thread.Start();
         }
 
-        public bool TryAdd(LogItem item)
+        public bool TryAdd(string message, TurLogLevel level = TurLogLevel.Information, string prefix = null, string suffix = null, Exception error = null)
         {
             if (_items.IsCompleted)
             {
                 return false;
             }
 
+            var item = new TurLogItem
+            {
+                Error = error,
+                LogLevel = level,
+                Prefix = prefix,
+                Message = message,
+                Suffix = suffix
+            };
             _items.Add(item);
             return true;
         }
@@ -44,7 +52,7 @@ namespace Tur.Appender
             }
         }
 
-        protected abstract void Handle(LogItem item);
+        protected abstract void Handle(TurLogItem item);
 
         public async ValueTask DisposeAsync()
         {

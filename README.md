@@ -40,13 +40,13 @@ tur [command] [options]
 ```sh
 PS C:\Users\jerry> tur dff --help
 Description:
-  Duplicate files finder.
+  Duplicate files finder for target directories.
 
 Usage:
-  tur dff <dir> [options]
+  tur dff <dir>... [options]
 
 Arguments:
-  <dir>  The target directory to analysis.
+  <dir>  The target directories to analysis.
 
 Options:
   -i, --include <include>                    Glob patterns for included files.
@@ -72,7 +72,7 @@ Usage:
 
 Arguments:
   <src>   The source directory.
-  <dest>  The Destination directory.
+  <dest>  The destination directory.
 
 Options:
   -i, --include <include>                    Glob patterns for included files.
@@ -85,8 +85,6 @@ Options:
   --size-only                                Skip files that match in both name and size.
   --create-after <create-after>              Create time after filter. e.g., 2022-07-01T10:20:21
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
-  --preserve-create                          Preserve creation time for destination file.
-  --preserve-last-modify                     Preserve last modify time for destination file.
   --ignore-error                             Ignore error during file processing.
   -?, -h, --help                             Show help and usage information
 ```
@@ -115,6 +113,7 @@ Options:
   --empty-dir                                Delete all empty directories.
   --from-file <from-file>                    Delete all files/directories listed in specified file.
   --create-after <create-after>              Create time after filter. e.g., 2022-07-01T10:20:21
+  -n, --dry-run                              Perform a trial run with no changes made.
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
   --ignore-error                             Ignore error during file processing.
   -?, -h, --help                             Show help and usage information

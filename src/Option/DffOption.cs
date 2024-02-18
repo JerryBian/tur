@@ -6,5 +6,5 @@ public class DffOption : OptionBase
     {
     }
 
-    public string Dir { get; set; }
+    public string[] Dir { get; set; }
 }

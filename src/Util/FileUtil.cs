@@ -1,11 +1,8 @@
-﻿using Microsoft.Extensions.FileSystemGlobbing;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Tur.Model;
 
 namespace Tur.Util
 {
@@ -73,106 +70,6 @@ namespace Tur.Util
         private static bool AreBytesEqual(ReadOnlySpan<byte> b1, ReadOnlySpan<byte> b2)
         {
             return b1.SequenceEqual(b2);
-        }
-
-        public static IEnumerable<FileSystemItem> EnumerateFiles(
-            string dir,
-            List<string> includes = null,
-            List<string> excludes = null,
-            DateTime createdBefore = default,
-            DateTime createdAfter = default,
-            DateTime lastModifiedBefore = default,
-            DateTime lastModifiedAfter = default)
-        {
-            if (!Directory.Exists(dir))
-            {
-                yield break;
-            }
-
-            Matcher m = new();
-            if (includes == null || !includes.Any())
-            {
-                _ = m.AddInclude("**");
-            }
-            else
-            {
-                includes.ForEach(x => m.AddInclude(x));
-            }
-
-            excludes?.ForEach(x => m.AddExclude(x));
-
-            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
-            {
-                FileSystemItem entry = new(false)
-                {
-                    FullPath = file
-                };
-                if (!m.Match(dir, file).HasMatches)
-                {
-                    continue;
-                }
-
-                var flag = true;
-                if (createdBefore != default || createdAfter != default)
-                {
-                    var fileCreationTime = File.GetCreationTime(file);
-                    var min = createdAfter == default ? DateTime.MinValue : createdAfter;
-                    var max = createdBefore == default ? DateTime.MaxValue : createdBefore;
-                    flag = fileCreationTime >= min && fileCreationTime <= max;
-                }
-
-                if (flag && (lastModifiedAfter != default || lastModifiedBefore != default))
-                {
-                    var fileLastModifyTime = File.GetLastWriteTime(file);
-                    var min = lastModifiedAfter == default ? DateTime.MinValue : lastModifiedAfter;
-                    var max = lastModifiedBefore == default ? DateTime.MaxValue : lastModifiedBefore;
-                    flag = fileLastModifyTime >= min && fileLastModifyTime <= max;
-                }
-
-                if (!flag)
-                {
-                    continue;
-                }
-
-                yield return entry;
-            }
-        }
-
-        public static IEnumerable<FileSystemItem> EnumerateDirectories(
-            string dir,
-            List<string> includes = null,
-            List<string> excludes = null)
-        {
-            if (!Directory.Exists(dir))
-            {
-                yield break;
-            }
-
-            Matcher m = new();
-            if (includes == null || !includes.Any())
-            {
-                _ = m.AddInclude("**");
-            }
-            else
-            {
-                includes.ForEach(x => m.AddInclude(x));
-            }
-
-            excludes?.ForEach(x => m.AddExclude(x));
-
-            foreach (var item in Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories))
-            {
-                FileSystemItem entry = new(true)
-                {
-                    FullPath = item
-                };
-                if (!m.Match(dir, item).HasMatches)
-                {
-                    continue;
-                }
-
-                yield return entry;
-            }
         }
     }
 }

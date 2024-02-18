@@ -35,7 +35,7 @@ public class MainService
 
     private Command CreateDffCommand()
     {
-        Command cmd = new("dff", "Duplicate files finder.");
+        Command cmd = new("dff", "Duplicate files finder for target directories.");
         var includeOption = CreateIncludeOption();
         cmd.AddOption(includeOption);
 
@@ -60,9 +60,9 @@ public class MainService
         var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
-        Argument<string> dirArg = new("dir", "The target directory to analysis.")
+        Argument<string[]> dirArg = new("dir", "The target directories to analysis.")
         {
-            Arity = ArgumentArity.ExactlyOne
+            Arity = ArgumentArity.OneOrMore
         };
         cmd.AddArgument(dirArg);
 
@@ -78,15 +78,9 @@ public class MainService
             var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
             var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-            {
-                await Console.Error.WriteLineAsync($"Destination director does not exist: {dir}");
-                return;
-            }
-
             DffOption option = new(_args)
             {
-                Dir = Path.GetFullPath(dir),
+                Dir = dir,
                 LastModifyAfter = lastModifyAfter,
                 LastModifyBefore = lastModifyBefore,
                 CreateAfter = createAfter,
@@ -265,7 +259,7 @@ public class MainService
         };
         cmd.AddArgument(srcDirArg);
 
-        Argument<string> destDirArg = new("dest", "The Destination directory.")
+        Argument<string> destDirArg = new("dest", "The destination directory.")
         {
             Arity = ArgumentArity.ExactlyOne
         };
@@ -276,18 +270,6 @@ public class MainService
 
         var createBeforeOption = CreateCreateBeforeOption();
         cmd.AddOption(createBeforeOption);
-
-        Option<bool> preserveCreateOption = new("--preserve-create", "Preserve creation time for destination file.")
-        {
-            Arity = ArgumentArity.ZeroOrOne
-        };
-        cmd.AddOption(preserveCreateOption);
-
-        Option<bool> preserveLastModifyOption = new("--preserve-last-modify", "Preserve last modify time for destination file.")
-        {
-            Arity = ArgumentArity.ZeroOrOne
-        };
-        cmd.AddOption(preserveLastModifyOption);
 
         var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
@@ -306,8 +288,6 @@ public class MainService
                 var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
                 var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-                var preserveCreate = context.ParseResult.GetValueForOption(preserveCreateOption);
-                var preserveLastModify = context.ParseResult.GetValueForOption(preserveLastModifyOption);
                 var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
 
                 if (string.IsNullOrEmpty(output))
@@ -324,8 +304,6 @@ public class MainService
                     SrcDir = srcDir,
                     DestDir = destDir,
                     SizeOnly = sizeOnly,
-                    PreserveCreateTime = preserveCreate,
-                    PreserveLastModifyTime = preserveLastModify,
                     LastModifyAfter = lastModifyAfter,
                     LastModifyBefore = lastModifyBefore,
                     CreateAfter = createAfter,

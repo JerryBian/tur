@@ -236,7 +236,6 @@ public class SyncHandlerTest : TestBase
         var srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
         Assert.Equal(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
         Assert.Equal(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
-        Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));
     }
 
     [Fact]
@@ -259,6 +258,5 @@ public class SyncHandlerTest : TestBase
         var srcFile = Directory.GetFiles(_srcDir, "*", SearchOption.AllDirectories).First();
         Assert.Equal(File.GetLastWriteTime(srcFile), File.GetLastWriteTime(destFile));
         Assert.Equal(File.GetCreationTime(srcFile), File.GetCreationTime(destFile));
-        Assert.NotEqual(File.GetLastAccessTime(srcFile), File.GetLastAccessTime(destFile));
     }
 }

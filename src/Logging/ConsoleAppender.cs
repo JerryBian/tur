@@ -127,7 +127,7 @@ namespace Tur.Logging
 
             if (!string.IsNullOrWhiteSpace(item.Suffix))
             {
-                fullMessage = $"{fullMessage}  {item.Suffix}";
+                fullMessage = $"{fullMessage}  ({item.Suffix})";
             }
 
             Console.Write(fullMessage);

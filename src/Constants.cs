@@ -12,7 +12,7 @@ public class Constants
 
     public const string XUnicode = "\u0078";
 
-    public const string DashUnicode = "\u0335";
+    public const string DashUnicode = "\u00AD";
 
     public const int LogItemsCapacity = 1000;
 }

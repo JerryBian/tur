@@ -65,9 +65,9 @@ public class SyncHandler : HandlerBase
             {
                 if (destItems.TryGetValue(srcItem.Key, out var dest))
                 {
-                    if (!dest.IsDirectory)
+                    if (!dest.IsDirectory && dest.Length == srcItem.Value.Length)
                     {
-                        if (_option.SizeOnly && dest.Length == srcItem.Value.Length)
+                        if (_option.SizeOnly)
                         {
                             _logger.Log($"{srcItem.Value.RelativePath}", TurLogLevel.Trace, Constants.DashUnicode, suffix: suffix);
                             return;

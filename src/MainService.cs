@@ -60,6 +60,12 @@ public class MainService
         var ignoreOption = CreateIgnoreErrorOption();
         cmd.AddOption(ignoreOption);
 
+        var verboseOption = CreateVerboseOption();
+        cmd.AddOption(verboseOption);
+
+        var noUserInteractionOption = CreateNoUserInteractionOption();
+        cmd.AddOption(noUserInteractionOption);
+
         Argument<string[]> dirArg = new("dir", "The target directories to analysis.")
         {
             Arity = ArgumentArity.OneOrMore
@@ -77,6 +83,8 @@ public class MainService
             var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
             var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
             var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+            var verbose = context.ParseResult.GetValueForOption(verboseOption);
+            var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
 
             DffOption option = new(_args)
             {
@@ -88,7 +96,9 @@ public class MainService
                 OutputDir = output,
                 Includes = includes,
                 Excludes = excludes,
-                IgnoreError = ignoreError
+                IgnoreError = ignoreError,
+                Verbose = verbose,
+                NoUserInteractive = noUserInteraction
             };
 
             await using DffHandler handler = new(option, context.GetCancellationToken());
@@ -115,6 +125,12 @@ public class MainService
 
         var lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
+
+        var verboseOption = CreateVerboseOption();
+        cmd.AddOption(verboseOption);
+
+        var noUserInteractionOption = CreateNoUserInteractionOption();
+        cmd.AddOption(noUserInteractionOption);
 
         Option<bool> fileOption = new(new[] { "-f", "--file" }, "Delete files only.")
         {
@@ -179,6 +195,8 @@ public class MainService
                 var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
                 var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+                var verbose = context.ParseResult.GetValueForOption(verboseOption);
+                var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -201,7 +219,9 @@ public class MainService
                     Includes = includes,
                     Excludes = excludes,
                     IgnoreError = ignoreError,
-                    DryRun = dryRun
+                    DryRun = dryRun,
+                    Verbose = verbose,
+                    NoUserInteractive = noUserInteraction
                 };
 
                 if (!string.IsNullOrEmpty(dest))
@@ -233,6 +253,12 @@ public class MainService
 
         var lastModifyBeforeOption = CreateLastModifyBeforeOption();
         cmd.AddOption(lastModifyBeforeOption);
+
+        var verboseOption = CreateVerboseOption();
+        cmd.AddOption(verboseOption);
+
+        var noUserInteractionOption = CreateNoUserInteractionOption();
+        cmd.AddOption(noUserInteractionOption);
 
         var dryRunOption = CreateDryRunOption();
         cmd.AddOption(dryRunOption);
@@ -289,6 +315,8 @@ public class MainService
                 var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
                 var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
                 var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
+                var verbose = context.ParseResult.GetValueForOption(verboseOption);
+                var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -311,7 +339,9 @@ public class MainService
                     OutputDir = output,
                     Includes = includes,
                     Excludes = excludes,
-                    IgnoreError = ignoreError
+                    IgnoreError = ignoreError,
+                    Verbose = verbose,
+                    NoUserInteractive = noUserInteraction
                 };
 
                 await using SyncHandler handler = new(option, context.GetCancellationToken());
@@ -399,6 +429,24 @@ public class MainService
     private Option<bool> CreateDryRunOption()
     {
         return new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private Option<bool> CreateVerboseOption()
+    {
+        return new(new[] { "-v", "--verbose" }, "Enable logging in detailed mode.")
+        {
+            IsRequired = false,
+            Arity = ArgumentArity.ZeroOrOne
+        };
+    }
+
+    private Option<bool> CreateNoUserInteractionOption()
+    {
+        return new(new[] { "--no-user-interaction" }, "Indicates running environment is not user interactive mode.")
         {
             IsRequired = false,
             Arity = ArgumentArity.ZeroOrOne

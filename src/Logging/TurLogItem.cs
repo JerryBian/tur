@@ -8,6 +8,8 @@ namespace Tur.Logging
 
         public string Prefix { get; set; }
 
+        public bool PrefixSurroundWithBrackets { get; set; }
+
         public string Suffix { get; set; }
 
         public TurLogLevel LogLevel { get; set; }

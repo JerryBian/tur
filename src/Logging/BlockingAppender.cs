@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,23 +20,20 @@ namespace Tur.Logging
             _thread.Start();
         }
 
-        public bool TryAdd(string message, TurLogLevel level = TurLogLevel.Information, string prefix = null, string suffix = null, Exception error = null)
+        public void Add(TurLogItem item)
         {
             if (_items.IsCompleted)
             {
-                return false;
+                try
+                {
+                    Handle(item);
+                }
+                catch { }
             }
-
-            var item = new TurLogItem
+            else
             {
-                Error = error,
-                LogLevel = level,
-                Prefix = prefix,
-                Message = message,
-                Suffix = suffix
-            };
-            _items.Add(item);
-            return true;
+                _items.Add(item);
+            }
         }
 
         private void Subscribe()

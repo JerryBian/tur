@@ -17,6 +17,11 @@ public class SyncHandler : HandlerBase
 {
     private readonly SyncOption _option;
 
+    private int _copiedFiles;
+    private int _createdDirectories;
+    private int _deletedFiles;
+    private int _deletedDirectories;
+
     public SyncHandler(SyncOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
         _option = option;
@@ -27,7 +32,7 @@ public class SyncHandler : HandlerBase
         _option.SrcDir = Path.GetFullPath(_option.SrcDir);
         if (!Directory.Exists(_option.SrcDir))
         {
-            _logger.Write($"Source directory not exists: {_option.SrcDir}", TurLogLevel.Error);
+            _logger.Log($"Source directory not exists: {_option.SrcDir}", TurLogLevel.Error, Constants.XUnicode, false);
             return false;
         }
 
@@ -42,6 +47,7 @@ public class SyncHandler : HandlerBase
         var suffix = _option.DryRun ? "DRY RUN" : "";
         Dictionary<string, TurFileSystem> sourceItems = new();
         Dictionary<string, TurFileSystem> destItems = new();
+
         Parallel.Invoke(
             () => sourceItems = GetFileSystem(_option.SrcDir, true),
             () => destItems = GetFileSystem(_option.DestDir, false));
@@ -59,37 +65,39 @@ public class SyncHandler : HandlerBase
             {
                 if (destItems.TryGetValue(srcItem.Key, out var dest))
                 {
-                    if(!dest.IsDirectory)
+                    if (!dest.IsDirectory)
                     {
                         if (_option.SizeOnly && dest.Length == srcItem.Value.Length)
                         {
-                            _logger.Write($"{srcItem.Value.RelativePath}", TurLogLevel.Information, LogConstants.Skip, suffix);
+                            _logger.Log($"{srcItem.Value.RelativePath}", TurLogLevel.Trace, Constants.DashUnicode, suffix: suffix);
                             return;
                         }
 
                         if (await FileUtil.IsSameFileAsync(srcItem.Value.FullPath, dest.FullPath, _option.IgnoreError))
                         {
-                            _logger.Write($"{srcItem.Value.RelativePath}", TurLogLevel.Information, LogConstants.Skip, suffix);
+                            _logger.Log($"{srcItem.Value.RelativePath}", TurLogLevel.Trace, Constants.DashUnicode, suffix: suffix);
                             return;
                         }
-                    } 
+                    }
                 }
-                
+
                 var destFullPath = Path.Combine(_option.DestDir, srcItem.Key);
                 if (srcItem.Value.IsDirectory)
                 {
-                    if (!_option.DryRun)
+                    if (!_option.DryRun && !Directory.Exists(destFullPath))
                     {
                         _ = Directory.CreateDirectory(destFullPath);
+                        _ = Interlocked.Increment(ref _createdDirectories);
                     }
 
                     return;
                 }
 
                 var destItemDir = Path.GetDirectoryName(destFullPath);
-                if (!string.IsNullOrEmpty(destItemDir) && !_option.DryRun)
+                if (!string.IsNullOrEmpty(destItemDir) && !_option.DryRun && !Directory.Exists(destItemDir))
                 {
                     _ = Directory.CreateDirectory(destItemDir);
+                    _ = Interlocked.Increment(ref _createdDirectories);
                 }
 
                 var sw = Stopwatch.StartNew();
@@ -98,23 +106,26 @@ public class SyncHandler : HandlerBase
                     File.Copy(srcItem.Value.FullPath, destFullPath, true);
                     File.SetCreationTime(destFullPath, srcItem.Value.CreationTime.Value);
                     File.SetLastWriteTime(destFullPath, srcItem.Value.LastModifyTime.Value);
+                    _ = Interlocked.Increment(ref _copiedFiles);
                 }
                 sw.Stop();
-                _logger.Write(
+                _logger.Log(
                     $"{srcItem.Value.RelativePath}",
                     TurLogLevel.Information,
-                    LogConstants.Succeed,
-                    $"{HumanUtil.GetSize(srcItem.Value.Length)}, {sw.Elapsed.Human()}{(_option.DryRun ? ", " + suffix : "")}");
+                    Constants.CheckUnicode,
+                    suffix: $"{HumanUtil.GetSize(srcItem.Value.Length)}, {sw.Elapsed.Human()}{(_option.DryRun ? ", " + suffix : "")}");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(_option.IgnoreError)
+                if (_option.IgnoreError)
                 {
-                    _logger.Write($"Unexpected error, skipping this item: {srcItem.Key}.", TurLogLevel.Warning, error: ex);
-                    return;
+                    _logger.Log(srcItem.Key, TurLogLevel.Warning, Constants.XUnicode, suffix: "SKIPPED", error: ex);
                 }
-
-                throw;
+                else
+                {
+                    _logger.Log(srcItem.Key, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                    Volatile.Write(ref shouldBreak, true);
+                }
             }
         });
 
@@ -139,41 +150,64 @@ public class SyncHandler : HandlerBase
                     break;
                 }
 
-                var srcItem = Path.Combine(_option.SrcDir, destItem.RelativePath);
-                if (destItem.IsDirectory)
+                try
                 {
-                    if (!Directory.Exists(srcItem))
+                    var srcItem = Path.Combine(_option.SrcDir, destItem.RelativePath);
+                    if (destItem.IsDirectory)
                     {
-                        if (_option.DryRun)
+                        if (!Directory.Exists(srcItem))
                         {
-                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED, DRY RUN");
+                            if (_option.DryRun)
+                            {
+                                _logger.Log(destItem.RelativePath, TurLogLevel.Information, Constants.CheckUnicode, suffix: "D, DEST REMOVED, DRY RUN");
+                            }
+                            else
+                            {
+                                Directory.Delete(destItem.FullPath);
+                                _ = Interlocked.Increment(ref _deletedDirectories);
+                                _logger.Log(destItem.RelativePath, TurLogLevel.Information, Constants.CheckUnicode, suffix: "D, DEST REMOVED");
+                            }
                         }
-                        else
+                    }
+                    else
+                    {
+                        if (!File.Exists(srcItem))
                         {
-                            Directory.Delete(destItem.FullPath);
-                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED");
+                            if (_option.DryRun)
+                            {
+                                _logger.Log(destItem.RelativePath, TurLogLevel.Information, Constants.CheckUnicode, suffix: "F, DEST REMOVED, DRY RUN");
+                            }
+                            else
+                            {
+                                File.Delete(destItem.FullPath);
+                                _ = Interlocked.Increment(ref _deletedFiles);
+                                _logger.Log(destItem.RelativePath, TurLogLevel.Information, Constants.CheckUnicode, suffix: "D, DEST REMOVED");
+                            }
                         }
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    if (!File.Exists(srcItem))
+                    if (_option.IgnoreError)
                     {
-                        if (_option.DryRun)
-                        {
-                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "F, DEST REMOVED, DRY RUN");
-                        }
-                        else
-                        {
-                            File.Delete(destItem.FullPath);
-                            _logger.Write(destItem.RelativePath, TurLogLevel.Information, LogConstants.Succeed, "D, DEST REMOVED");
-                        }
+                        _logger.Log(destItem.FullPath, TurLogLevel.Warning, Constants.XUnicode, suffix: "SKIPPED", error: ex);
+                    }
+                    else
+                    {
+                        _logger.Log(destItem.FullPath, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                        return 1;
                     }
                 }
             }
         }
 
         return 0;
+    }
+
+    protected override void PostCheck()
+    {
+        base.PostCheck();
+        _logger.Log($"{_copiedFiles} files copied, {_createdDirectories} directories created. {_deletedFiles} files and {_deletedDirectories} directories deleted.", TurLogLevel.Information, Constants.ArrowUnicode, false);
     }
 
     private Dictionary<string, TurFileSystem> GetFileSystem(string dir, bool includeAttributes)

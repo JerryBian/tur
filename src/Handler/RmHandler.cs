@@ -12,6 +12,8 @@ namespace Tur.Handler;
 public class RmHandler : HandlerBase
 {
     private readonly RmOption _option;
+    private int _deletedFiles;
+    private int _deletedDirectories;
 
     public RmHandler(RmOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
@@ -34,39 +36,44 @@ public class RmHandler : HandlerBase
                 {
                     if (_option.DryRun)
                     {
-                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F, DRY RUN");
+                        _logger.Log($"{fullPath}", TurLogLevel.Information, Constants.CheckUnicode, suffix: "F, DRY RUN");
                     }
                     else
                     {
                         File.Delete(fullPath);
-                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F");
+                        _ = Interlocked.Increment(ref _deletedFiles);
+                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "F");
                     }
                 }
                 else if (Directory.Exists(fullPath))
                 {
                     if (_option.DryRun)
                     {
-                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D, DRY RUN");
+                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D, DRY RUN");
                     }
                     else
                     {
                         Directory.Delete(fullPath, true);
-                        _logger.Write($"{fullPath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D");
+                        _ = Interlocked.Increment(ref _deletedDirectories);
+                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
                     }
                 }
                 else
                 {
-                    _logger.Write($"{fullPath}", Logging.TurLogLevel.Warning, LogConstants.Skip, _option.DryRun ? "DRY RUN" : "");
+                    _logger.Log($"{fullPath}", Logging.TurLogLevel.Warning, Constants.DashUnicode, suffix: _option.DryRun ? "DRY RUN" : "");
                 }
             }
             catch (Exception ex)
             {
-                if (!_option.IgnoreError)
+                if (_option.IgnoreError)
                 {
-                    throw;
+                    _logger.Log(fullPath, TurLogLevel.Warning, Constants.XUnicode, suffix: "SKIPPED", error: ex);
                 }
-
-                _logger.Write($"This item is skipped due to error: {fullPath}", TurLogLevel.Warning, error: ex);
+                else
+                {
+                    _logger.Log(fullPath, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                    break;
+                }
             }
         }
     }
@@ -92,12 +99,13 @@ public class RmHandler : HandlerBase
                     {
                         if (_option.DryRun)
                         {
-                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D, DRY RUN");
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D, DRY RUN");
                         }
                         else
                         {
                             Directory.Delete(item.FullPath, true);
-                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "D");
+                            _ = Interlocked.Increment(ref _deletedDirectories);
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
                         }
                     }
                 }
@@ -107,31 +115,42 @@ public class RmHandler : HandlerBase
                     {
                         if (_option.DryRun)
                         {
-                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F, DRY RUN");
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "F, DRY RUN");
                         }
                         else
                         {
                             File.Delete(item.FullPath);
-                            _logger.Write($"{item.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, "F");
+                            _ = Interlocked.Increment(ref _deletedFiles);
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "F");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                if (!_option.IgnoreError)
+                if (_option.IgnoreError)
                 {
-                    throw;
+                    _logger.Log(item.RelativePath, TurLogLevel.Warning, Constants.XUnicode, suffix: "SKIPPED", error: ex);
                 }
-
-                _logger.Write($"This item is skipped due to error: {item.RelativePath}", TurLogLevel.Warning, error: ex);
+                else
+                {
+                    _logger.Log(item.RelativePath, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                    break;
+                }
             }
         }
 
         if (!Directory.EnumerateFileSystemEntries(_option.Destination, "*", SearchOption.TopDirectoryOnly).Any())
         {
             Directory.Delete(_option.Destination);
+            _logger.Log(_option.Destination, Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
         }
+    }
+
+    protected override void PostCheck()
+    {
+        base.PostCheck();
+        _logger.Log($"{_deletedFiles} files and {_deletedDirectories} directories deleted.", TurLogLevel.Information, Constants.ArrowUnicode, false);
     }
 
     protected override bool PreCheck()
@@ -143,7 +162,7 @@ public class RmHandler : HandlerBase
 
         if (string.IsNullOrEmpty(_option.Destination) && string.IsNullOrEmpty(_option.FromFile))
         {
-            _logger.Write("Either --from-file or destination directory must be provided.", TurLogLevel.Error);
+            _logger.Log("Either --from-file or destination directory must be provided.", TurLogLevel.Error, Constants.XUnicode, false);
             return false;
         }
 
@@ -152,7 +171,7 @@ public class RmHandler : HandlerBase
             _option.Destination = Path.GetFullPath(_option.Destination);
             if (!Directory.Exists(_option.Destination))
             {
-                _logger.Write($"Target directory not exists: {_option.Destination}.", TurLogLevel.Error);
+                _logger.Log($"Target directory not exists: {_option.Destination}.", TurLogLevel.Error, Constants.XUnicode, false);
                 return false;
             }
         }
@@ -162,7 +181,7 @@ public class RmHandler : HandlerBase
             _option.FromFile = Path.GetFullPath(_option.FromFile);
             if (!File.Exists(_option.FromFile))
             {
-                _logger.Write($"File list provided via --from-file not exists: {_option.Destination}.", TurLogLevel.Error);
+                _logger.Log($"File list provided via --from-file not exists: {_option.Destination}.", TurLogLevel.Error, Constants.XUnicode, false);
                 return false;
             }
         }

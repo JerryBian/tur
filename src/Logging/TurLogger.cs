@@ -15,7 +15,7 @@ namespace Tur.Logging
 
         public TurLogger(OptionBase options, CancellationToken cancellationToken)
         {
-            _consoleAppender = new ConsoleAppender(!options.NoUserInteractive);
+            _consoleAppender = new ConsoleAppender(!options.NoUserInteractive, options.Verbose);
             _fileLogPath = Path.Combine(options.OutputDir, $"tur-{options.CmdName}-{Path.GetRandomFileName().Replace(".", string.Empty)}.log");
             _fileAppender = new FileAppender(_fileLogPath);
             _cancellationToken = cancellationToken;
@@ -25,25 +25,48 @@ namespace Tur.Logging
         {
             if (_cancellationToken.IsCancellationRequested)
             {
-                Write($"{Constants.ArrowUnicode} User requested to cancel ...", TurLogLevel.Warning);
+                Log($"User requested to cancel ...", TurLogLevel.Warning, Constants.ArrowUnicode, false);
             }
 
-            _ = _consoleAppender.TryAdd($"{Constants.ArrowUnicode} Log file: {_fileLogPath}");
+            var item = new TurLogItem
+            {
+                LogLevel = TurLogLevel.Information,
+                Message = $"Log file: {_fileLogPath}",
+                Prefix = Constants.ArrowUnicode,
+                PrefixSurroundWithBrackets = false
+            };
+            _consoleAppender.Add(item);
             await _consoleAppender.DisposeAsync();
             await _fileAppender.DisposeAsync();
         }
 
-        public void Write(string message, TurLogLevel level = TurLogLevel.Information, string prefix = null, string suffix = null, Exception error = null)
+        public void Log(
+            string message,
+            TurLogLevel level = TurLogLevel.Information,
+            string prefix = null,
+            bool prefixSurroundWithBrackets = true,
+            string suffix = null,
+            Exception error = null)
         {
+            var item = new TurLogItem
+            {
+                Suffix = suffix,
+                PrefixSurroundWithBrackets = prefixSurroundWithBrackets,
+                Error = error,
+                LogLevel = level,
+                Message = message,
+                Prefix = prefix
+            };
+
             try
             {
-                _ = _consoleAppender.TryAdd(message, level, prefix, suffix, error);
+                _consoleAppender.Add(item);
             }
             catch { }
 
             try
             {
-                _ = _fileAppender.TryAdd(message, level, prefix, suffix, error);
+                _fileAppender.Add(item);
             }
             catch { }
         }

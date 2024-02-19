@@ -33,4 +33,6 @@ public abstract class OptionBase
     public bool IgnoreError { get; set; }
 
     public bool NoUserInteractive { get; set; }
+
+    public bool Verbose { get; set; }
 }

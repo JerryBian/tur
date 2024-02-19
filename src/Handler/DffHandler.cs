@@ -40,6 +40,7 @@ public class DffHandler : HandlerBase
             return 0;
         }
 
+        var hasFoundBefore = false;
         foreach (var item in files.GroupBy(x => x.Length))
         {
             if (CancellationToken.IsCancellationRequested)
@@ -50,18 +51,24 @@ public class DffHandler : HandlerBase
             var duplicateItems = await GetDuplicateFilesAsync(item.ToList());
             if (duplicateItems.Count != 0)
             {
+                if (hasFoundBefore)
+                {
+                    _logger.Log(string.Empty);
+                }
+
+                hasFoundBefore = true;
                 var prefix = duplicateItems.Count > 1 ? "  " : "";
-                _logger.Write($"Found {duplicateItems.Count} duplicate groups:", TurLogLevel.Information, HumanUtil.GetSize(item.Key));
+                _logger.Log($"Found {duplicateItems.Count} duplicate groups for file size {HumanUtil.GetSize(item.Key)}:", TurLogLevel.Information, Constants.ArrowUnicode, false);
                 for (var i = 0; i < duplicateItems.Count; i++)
                 {
                     if (duplicateItems.Count > 1)
                     {
-                        _logger.Write($"  Group {i + 1}:", TurLogLevel.Information);
+                        _logger.Log($"  Group {i + 1}:", TurLogLevel.Information, Constants.SquareUnicode, false);
                     }
 
                     foreach (var duplicateItem in duplicateItems[i])
                     {
-                        _logger.Write($"  {prefix}{Constants.SquareUnicode} {duplicateItem.FullPath}");
+                        _logger.Log($"  {prefix}{duplicateItem.FullPath}", TurLogLevel.Information, Constants.DotUnicode, false);
                     }
                 }
             }
@@ -116,7 +123,12 @@ public class DffHandler : HandlerBase
         for (var i = 0; i < _option.Dir.Length; i++)
         {
             _option.Dir[i] = Path.GetFullPath(_option.Dir[i]);
-            _logger.Write($"Target directory not exists: {_option.Dir[i]}");
+            if (!Directory.Exists(_option.Dir[i]))
+            {
+                _logger.Log($"Target directory not exists: {_option.Dir[i]}", TurLogLevel.Error, Constants.XUnicode, false);
+                return false;
+            }
+
         }
 
         return base.PreCheck();

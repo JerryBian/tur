@@ -57,6 +57,8 @@ Options:
   --create-after <create-after>              Create time after filter. e.g., 2022-07-01T10:20:21
   --create-before <create-before>            Create time before fitler. e.g., 2022-12-02T16:20:21
   --ignore-error                             Ignore error during file processing.
+  -v, --verbose                              Enable logging in detailed mode.
+  --no-user-interaction                      Indicates running environment is not user interactive mode.
   -?, -h, --help                             Show help and usage information
 ```
 
@@ -80,6 +82,8 @@ Options:
   -o, --output <output>                      The output directory for logs or any file generated during processing.
   --last-modify-after <last-modify-after>    Last modify time after filter. e.g., 2022-10-01T10:20:21
   --last-modify-before <last-modify-before>  Last modify time before fitler. e.g., 2022-08-02T16:20:21
+  -v, --verbose                              Enable logging in detailed mode.
+  --no-user-interaction                      Indicates running environment is not user interactive mode.
   -n, --dry-run                              Perform a trial run with no changes made.
   -d, --delete                               Delete extraneous files from destination directory.
   --size-only                                Skip files that match in both name and size.
@@ -108,6 +112,8 @@ Options:
   -o, --output <output>                      The output directory for logs or any file generated during processing.
   --last-modify-after <last-modify-after>    Last modify time after filter. e.g., 2022-10-01T10:20:21
   --last-modify-before <last-modify-before>  Last modify time before fitler. e.g., 2022-08-02T16:20:21
+  -v, --verbose                              Enable logging in detailed mode.
+  --no-user-interaction                      Indicates running environment is not user interactive mode.
   -f, --file                                 Delete files only.
   -d, --dir                                  Delete directories only.
   --empty-dir                                Delete all empty directories.

@@ -2,6 +2,8 @@
 {
     public enum TurLogLevel
     {
+        Trace,
+
         Information,
 
         Warning,

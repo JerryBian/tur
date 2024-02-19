@@ -44,13 +44,14 @@ public abstract class HandlerBase : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.Write("Unexpected error.", TurLogLevel.Error, error: ex);
+            _logger.Log("Unexpected error.", TurLogLevel.Error, error: ex);
         }
 
         stopwatch.Stop();
 
-        _logger.Write(string.Empty);
-        _logger.Write($"{Constants.ArrowUnicode} All done. Elapsed: [{stopwatch.Elapsed.Human()}]");
+        _logger.Log(string.Empty);
+        _logger.Log($"All done. Elapsed: [{stopwatch.Elapsed.Human()}]", prefix: Constants.ArrowUnicode, prefixSurroundWithBrackets: false);
+        PostCheck();
         return exitCode;
     }
 
@@ -62,7 +63,13 @@ public abstract class HandlerBase : IAsyncDisposable
         _ = sb.AppendLine($"## Processed by tur {versionStr} ##");
         _ = sb.AppendLine($"## Command: tur {string.Join(" ", _option.RawArgs)} ##");
 
-        _logger.Write(sb.ToString());
+        _logger.Log(sb.ToString(), TurLogLevel.Trace);
+        _logger.Log(string.Empty, TurLogLevel.Trace);
+    }
+
+    protected virtual void PostCheck()
+    {
+
     }
 
     protected virtual bool PreCheck()

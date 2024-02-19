@@ -1,5 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Tur.Core;
@@ -36,39 +39,54 @@ public class SyncHandler : HandlerBase
 
     protected override async Task<int> HandleInternalAsync()
     {
-        var buildOptions = CreateBuildOptions();
-        buildOptions.IncludeDirectories = buildOptions.IncludeFiles = true;
-        buildOptions.IncludeFileSize = true;
-        buildOptions.IncludeAttributes = true;
         var suffix = _option.DryRun ? "DRY RUN" : "";
+        Dictionary<string, TurFileSystem> sourceItems = new();
+        Dictionary<string, TurFileSystem> destItems = new();
+        Parallel.Invoke(
+            () => sourceItems = GetFileSystem(_option.SrcDir, true),
+            () => destItems = GetFileSystem(_option.DestDir, false));
 
-        var builder = new TurSystemBuilder(_option.SrcDir, buildOptions, CancellationToken);
-        foreach (var srcItem in builder.Build())
+        var shouldBreak = false;
+        await Parallel.ForEachAsync(sourceItems.TakeWhile(x => !Volatile.Read(ref shouldBreak)), async (srcItem, ct) =>
         {
             if (CancellationToken.IsCancellationRequested)
             {
-                break;
+                Volatile.Write(ref shouldBreak, true);
+                return;
             }
 
-            var destItem = Path.Combine(_option.DestDir, srcItem.RelativePath);
-            if (!srcItem.IsDirectory)
+            try
             {
-                if (File.Exists(destItem))
+                if (destItems.TryGetValue(srcItem.Key, out var dest))
                 {
-                    if (_option.SizeOnly && destItem.Length == new FileInfo(destItem).Length)
+                    if(!dest.IsDirectory)
                     {
-                        _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Skip, suffix);
-                        continue;
+                        if (_option.SizeOnly && dest.Length == srcItem.Value.Length)
+                        {
+                            _logger.Write($"{srcItem.Value.RelativePath}", TurLogLevel.Information, LogConstants.Skip, suffix);
+                            return;
+                        }
+
+                        if (await FileUtil.IsSameFileAsync(srcItem.Value.FullPath, dest.FullPath, _option.IgnoreError))
+                        {
+                            _logger.Write($"{srcItem.Value.RelativePath}", TurLogLevel.Information, LogConstants.Skip, suffix);
+                            return;
+                        }
+                    } 
+                }
+                
+                var destFullPath = Path.Combine(_option.DestDir, srcItem.Key);
+                if (srcItem.Value.IsDirectory)
+                {
+                    if (!_option.DryRun)
+                    {
+                        _ = Directory.CreateDirectory(destFullPath);
                     }
 
-                    if (await FileUtil.IsSameFileAsync(srcItem.FullPath, destItem, _option.IgnoreError))
-                    {
-                        _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Skip, suffix);
-                        continue;
-                    }
+                    return;
                 }
 
-                var destItemDir = Path.GetDirectoryName(destItem);
+                var destItemDir = Path.GetDirectoryName(destFullPath);
                 if (!string.IsNullOrEmpty(destItemDir) && !_option.DryRun)
                 {
                     _ = Directory.CreateDirectory(destItemDir);
@@ -77,21 +95,28 @@ public class SyncHandler : HandlerBase
                 var sw = Stopwatch.StartNew();
                 if (!_option.DryRun)
                 {
-                    File.Copy(srcItem.FullPath, destItem, true);
-                    File.SetCreationTime(destItem, srcItem.CreationTime.Value);
-                    File.SetLastWriteTime(destItem, srcItem.LastModifyTime.Value);
+                    File.Copy(srcItem.Value.FullPath, destFullPath, true);
+                    File.SetCreationTime(destFullPath, srcItem.Value.CreationTime.Value);
+                    File.SetLastWriteTime(destFullPath, srcItem.Value.LastModifyTime.Value);
                 }
                 sw.Stop();
-                _logger.Write($"{srcItem.RelativePath}", Logging.TurLogLevel.Information, LogConstants.Succeed, $"{HumanUtil.GetSize(srcItem.Length)}, {sw.Elapsed.Human()}{(_option.DryRun ? ", " + suffix : "")}");
+                _logger.Write(
+                    $"{srcItem.Value.RelativePath}",
+                    TurLogLevel.Information,
+                    LogConstants.Succeed,
+                    $"{HumanUtil.GetSize(srcItem.Value.Length)}, {sw.Elapsed.Human()}{(_option.DryRun ? ", " + suffix : "")}");
             }
-            else
+            catch(Exception ex)
             {
-                if (!_option.DryRun)
+                if(_option.IgnoreError)
                 {
-                    _ = Directory.CreateDirectory(destItem);
+                    _logger.Write($"Unexpected error, skipping this item: {srcItem.Key}.", TurLogLevel.Warning, error: ex);
+                    return;
                 }
+
+                throw;
             }
-        }
+        });
 
         if (CancellationToken.IsCancellationRequested)
         {
@@ -100,13 +125,13 @@ public class SyncHandler : HandlerBase
 
         if (_option.Delete)
         {
-            buildOptions = new TurBuildOptions
+            var buildOptions = new TurBuildOptions
             {
                 IgnoreError = _option.IgnoreError,
                 IncludeFiles = true,
                 IncludeDirectories = true
             };
-            builder = new TurSystemBuilder(_option.DestDir, buildOptions, CancellationToken);
+            var builder = new TurSystemBuilder(_option.DestDir, buildOptions, CancellationToken);
             foreach (var destItem in builder.Build())
             {
                 if (CancellationToken.IsCancellationRequested)
@@ -149,5 +174,17 @@ public class SyncHandler : HandlerBase
         }
 
         return 0;
+    }
+
+    private Dictionary<string, TurFileSystem> GetFileSystem(string dir, bool includeAttributes)
+    {
+        var buildOptions = CreateBuildOptions();
+        buildOptions.IncludeDirectories = buildOptions.IncludeFiles = true;
+        buildOptions.IncludeFileSize = true;
+        buildOptions.IncludeAttributes = includeAttributes;
+
+
+        var builder = new TurSystemBuilder(dir, buildOptions, CancellationToken);
+        return builder.Build().ToDictionary(x => x.RelativePath, x => x);
     }
 }

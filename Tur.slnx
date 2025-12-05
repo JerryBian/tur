@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Tur.csproj" />
+  <Project Path="test/Tur.Test.csproj" />
+</Solution>

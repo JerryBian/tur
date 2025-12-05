@@ -19,72 +19,73 @@ public class MainService
     public async Task<int> RunAsync()
     {
         RootCommand rootCommand = new("Command line tool to manage files.");
-        rootCommand.AddAlias("tur");
+        rootCommand.Aliases.Add("tur");
 
         var dffCmd = CreateDffCommand();
-        rootCommand.AddCommand(dffCmd);
+        rootCommand.Subcommands.Add(dffCmd);
 
         var syncCmd = CreateSyncCommand();
-        rootCommand.AddCommand(syncCmd);
+        rootCommand.Subcommands.Add(syncCmd);
 
         var rmCmd = CreateRmCommand();
-        rootCommand.AddCommand(rmCmd);
+        rootCommand.Subcommands.Add(rmCmd);
 
-        return await rootCommand.InvokeAsync(_args);
+        return await rootCommand.Parse(_args).InvokeAsync();
     }
 
     private Command CreateDffCommand()
     {
         Command cmd = new("dff", "Duplicate files finder for target directories.");
         var includeOption = CreateIncludeOption();
-        cmd.AddOption(includeOption);
+        cmd.Options.Add(includeOption);
 
         var excludeOption = CreateExcludeOption();
-        cmd.AddOption(excludeOption);
+        cmd.Options.Add(excludeOption);
 
         var outputOption = CreateOutputOption();
-        cmd.AddOption(outputOption);
+        cmd.Options.Add(outputOption);
 
         var lastModifyAfterOption = CreateLastModifyAfterOption();
-        cmd.AddOption(lastModifyAfterOption);
+        cmd.Options.Add(lastModifyAfterOption);
 
         var lastModifyBeforeOption = CreateLastModifyBeforeOption();
-        cmd.AddOption(lastModifyBeforeOption);
+        cmd.Options.Add(lastModifyBeforeOption);
 
         var createAfterOption = CreateCreateAfterOption();
-        cmd.AddOption(createAfterOption);
+        cmd.Options.Add(createAfterOption);
 
         var createBeforeOption = CreateCreateBeforeOption();
-        cmd.AddOption(createBeforeOption);
+        cmd.Options.Add(createBeforeOption);
 
         var ignoreOption = CreateIgnoreErrorOption();
-        cmd.AddOption(ignoreOption);
+        cmd.Options.Add(ignoreOption);
 
         var verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
+        cmd.Options.Add(verboseOption);
 
         var noUserInteractionOption = CreateNoUserInteractionOption();
-        cmd.AddOption(noUserInteractionOption);
+        cmd.Options.Add(noUserInteractionOption);
 
-        Argument<string[]> dirArg = new("dir", "The target directories to analysis.")
+        var dirArg = new Argument<string[]>("dir")
         {
+            Description = "The target directories to analysis.",
             Arity = ArgumentArity.OneOrMore
         };
-        cmd.AddArgument(dirArg);
+        cmd.Arguments.Add(dirArg);
 
-        cmd.SetHandler(async (context) =>
+        cmd.SetAction(async (context, cancellationToken) =>
         {
-            var dir = context.ParseResult.GetValueForArgument(dirArg);
-            var output = context.ParseResult.GetValueForOption(outputOption);
-            var includes = context.ParseResult.GetValueForOption(includeOption);
-            var excludes = context.ParseResult.GetValueForOption(excludeOption);
-            var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-            var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-            var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-            var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-            var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-            var verbose = context.ParseResult.GetValueForOption(verboseOption);
-            var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
+            var dir = context.GetValue(dirArg);
+            var output = context.GetValue(outputOption);
+            var includes = context.GetValue(includeOption);
+            var excludes = context.GetValue(excludeOption);
+            var lastModifyAfter = context.GetValue(lastModifyAfterOption);
+            var lastModifyBefore = context.GetValue(lastModifyBeforeOption);
+            var createAfter = context.GetValue(createAfterOption);
+            var createBefore = context.GetValue(createBeforeOption);
+            var ignoreError = context.GetValue(ignoreOption);
+            var verbose = context.GetValue(verboseOption);
+            var noUserInteraction = context.GetValue(noUserInteractionOption);
 
             DffOption option = new(_args)
             {
@@ -101,8 +102,8 @@ public class MainService
                 NoUserInteractive = noUserInteraction
             };
 
-            await using DffHandler handler = new(option, context.GetCancellationToken());
-            context.ExitCode = await handler.HandleAsync();
+            await using DffHandler handler = new(option, cancellationToken);
+            return await handler.HandleAsync();
         });
 
         return cmd;
@@ -112,91 +113,96 @@ public class MainService
     {
         Command cmd = new("rm", "Remove files or directories.");
         var includeOption = CreateIncludeOption();
-        cmd.AddOption(includeOption);
+        cmd.Options.Add(includeOption);
 
         var excludeOption = CreateExcludeOption();
-        cmd.AddOption(excludeOption);
+        cmd.Options.Add(excludeOption);
 
         var outputOption = CreateOutputOption();
-        cmd.AddOption(outputOption);
+        cmd.Options.Add(outputOption);
 
         var lastModifyAfterOption = CreateLastModifyAfterOption();
-        cmd.AddOption(lastModifyAfterOption);
+        cmd.Options.Add(lastModifyAfterOption);
 
         var lastModifyBeforeOption = CreateLastModifyBeforeOption();
-        cmd.AddOption(lastModifyBeforeOption);
+        cmd.Options.Add(lastModifyBeforeOption);
 
         var verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
+        cmd.Options.Add(verboseOption);
 
         var noUserInteractionOption = CreateNoUserInteractionOption();
-        cmd.AddOption(noUserInteractionOption);
+        cmd.Options.Add(noUserInteractionOption);
 
-        Option<bool> fileOption = new(new[] { "-f", "--file" }, "Delete files only.")
+        Option<bool> fileOption = new("-f", "--file" )
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Delete files only."
         };
-        cmd.AddOption(fileOption);
+        cmd.Options.Add(fileOption);
 
-        Option<bool> dirOption = new(new[] { "-d", "--dir" }, "Delete directories only.")
+        Option<bool> dirOption = new("-d", "--dir")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Delete directories only."
         };
-        cmd.AddOption(dirOption);
+        cmd.Options.Add(dirOption);
 
-        Option<bool> emptyDirOption = new(new[] { "--empty-dir" }, "Delete all empty directories.")
+        Option<bool> emptyDirOption = new("--empty-dir")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Delete empty directories only."
         };
-        cmd.AddOption(emptyDirOption);
+        cmd.Options.Add(emptyDirOption);
 
         Option<string> fromFileOption =
-            new(new[] { "--from-file" }, "Delete all files/directories listed in specified file.")
+            new("--from-file")
             {
-                IsRequired = false,
-                Arity = ArgumentArity.ZeroOrOne
+                Required = false,
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "Delete all files/directories listed in specified file."
             };
-        cmd.AddOption(fromFileOption);
+        cmd.Options.Add(fromFileOption);
 
-        Argument<string> destArg = new("dest", "The destination directory.")
+        Argument<string> destArg = new("dest")
         {
-            Arity = ArgumentArity.ZeroOrOne
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "The destination directory."
         };
-        cmd.AddArgument(destArg);
+        cmd.Arguments.Add(destArg);
 
         var createAfterOption = CreateCreateAfterOption();
-        cmd.AddOption(createAfterOption);
+        cmd.Options.Add(createAfterOption);
 
         var dryRunOption = CreateDryRunOption();
-        cmd.AddOption(dryRunOption);
+        cmd.Options.Add(dryRunOption);
 
         var createBeforeOption = CreateCreateBeforeOption();
-        cmd.AddOption(createBeforeOption);
+        cmd.Options.Add(createBeforeOption);
 
         var ignoreOption = CreateIgnoreErrorOption();
-        cmd.AddOption(ignoreOption);
+        cmd.Options.Add(ignoreOption);
 
-        cmd.SetHandler(async (context) =>
+        cmd.SetAction(async (context, cancellationToken) =>
             {
-                var output = context.ParseResult.GetValueForOption(outputOption);
-                var includes = context.ParseResult.GetValueForOption(includeOption);
-                var excludes = context.ParseResult.GetValueForOption(excludeOption);
-                var dest = context.ParseResult.GetValueForArgument(destArg);
-                var file = context.ParseResult.GetValueForOption(fileOption);
-                var dir = context.ParseResult.GetValueForOption(dirOption);
-                var emptyDir = context.ParseResult.GetValueForOption(emptyDirOption);
-                var fromFile = context.ParseResult.GetValueForOption(fromFileOption);
-                var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-                var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-                var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-                var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-                var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
-                var verbose = context.ParseResult.GetValueForOption(verboseOption);
-                var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
+                var output = context.GetValue(outputOption);
+                var includes = context.GetValue(includeOption);
+                var excludes = context.GetValue(excludeOption);
+                var dest = context.GetValue(destArg);
+                var file = context.GetValue(fileOption);
+                var dir = context.GetValue(dirOption);
+                var emptyDir = context.GetValue(emptyDirOption);
+                var fromFile = context.GetValue(fromFileOption);
+                var lastModifyAfter = context.GetValue(lastModifyAfterOption);
+                var lastModifyBefore = context.GetValue(lastModifyBeforeOption);
+                var createAfter = context.GetValue(createAfterOption);
+                var createBefore = context.GetValue(createBeforeOption);
+                var ignoreError = context.GetValue(ignoreOption);
+                var dryRun = context.GetValue(dryRunOption);
+                var verbose = context.GetValue(verboseOption);
+                var noUserInteraction = context.GetValue(noUserInteractionOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -229,8 +235,8 @@ public class MainService
                     option.Destination = Path.GetFullPath(dest);
                 }
 
-                await using RmHandler handler = new(option, context.GetCancellationToken());
-                context.ExitCode = await handler.HandleAsync();
+                await using RmHandler handler = new(option, cancellationToken);
+                return await handler.HandleAsync();
             });
 
         return cmd;
@@ -240,83 +246,87 @@ public class MainService
     {
         Command cmd = new("sync", "Synchronize files from source to destination directory.");
         var includeOption = CreateIncludeOption();
-        cmd.AddOption(includeOption);
+        cmd.Options.Add(includeOption);
 
         var excludeOption = CreateExcludeOption();
-        cmd.AddOption(excludeOption);
+        cmd.Options.Add(excludeOption);
 
         var outputOption = CreateOutputOption();
-        cmd.AddOption(outputOption);
+        cmd.Options.Add(outputOption);
 
         var lastModifyAfterOption = CreateLastModifyAfterOption();
-        cmd.AddOption(lastModifyAfterOption);
+        cmd.Options.Add(lastModifyAfterOption);
 
         var lastModifyBeforeOption = CreateLastModifyBeforeOption();
-        cmd.AddOption(lastModifyBeforeOption);
+        cmd.Options.Add(lastModifyBeforeOption);
 
         var verboseOption = CreateVerboseOption();
-        cmd.AddOption(verboseOption);
+        cmd.Options.Add(verboseOption);
 
         var noUserInteractionOption = CreateNoUserInteractionOption();
-        cmd.AddOption(noUserInteractionOption);
+        cmd.Options.Add(noUserInteractionOption);
 
         var dryRunOption = CreateDryRunOption();
-        cmd.AddOption(dryRunOption);
+        cmd.Options.Add(dryRunOption);
 
         Option<bool> deleteOption =
-            new(new[] { "-d", "--delete" }, "Delete extraneous files from destination directory.")
+            new("-d", "--delete")
             {
-                IsRequired = false,
-                Arity = ArgumentArity.ZeroOrOne
+                Required = false,
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "Delete extraneous files from destination directory."
             };
-        cmd.AddOption(deleteOption);
+        cmd.Options.Add(deleteOption);
 
         Option<bool> sizeOnlyOption =
-            new(new[] { "--size-only" }, "Skip files that match in both name and size.")
+            new("--size-only")
             {
-                IsRequired = false,
-                Arity = ArgumentArity.ZeroOrOne
+                Required = false,
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "Skip files that match in both name and size."
             };
-        cmd.AddOption(sizeOnlyOption);
+        cmd.Options.Add(sizeOnlyOption);
 
-        Argument<string> srcDirArg = new("src", "The source directory.")
+        Argument<string> srcDirArg = new("src")
         {
-            Arity = ArgumentArity.ExactlyOne
+            Arity = ArgumentArity.ExactlyOne,
+            Description = "The source directory."
         };
-        cmd.AddArgument(srcDirArg);
+        cmd.Arguments.Add(srcDirArg);
 
-        Argument<string> destDirArg = new("dest", "The destination directory.")
+        Argument<string> destDirArg = new("dest")
         {
-            Arity = ArgumentArity.ExactlyOne
+            Arity = ArgumentArity.ExactlyOne,
+            Description = "The destination directory."
         };
-        cmd.AddArgument(destDirArg);
+        cmd.Arguments.Add(destDirArg);
 
         var createAfterOption = CreateCreateAfterOption();
-        cmd.AddOption(createAfterOption);
+        cmd.Options.Add(createAfterOption);
 
         var createBeforeOption = CreateCreateBeforeOption();
-        cmd.AddOption(createBeforeOption);
+        cmd.Options.Add(createBeforeOption);
 
         var ignoreOption = CreateIgnoreErrorOption();
-        cmd.AddOption(ignoreOption);
+        cmd.Options.Add(ignoreOption);
 
-        cmd.SetHandler(async (context) =>
+        cmd.SetAction(async (context, cancellationToken) =>
             {
-                var output = context.ParseResult.GetValueForOption(outputOption);
-                var includes = context.ParseResult.GetValueForOption(includeOption);
-                var excludes = context.ParseResult.GetValueForOption(excludeOption);
-                var delete = context.ParseResult.GetValueForOption(deleteOption);
-                var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
-                var srcDir = context.ParseResult.GetValueForArgument(srcDirArg);
-                var destDir = context.ParseResult.GetValueForArgument(destDirArg);
-                var sizeOnly = context.ParseResult.GetValueForOption(sizeOnlyOption);
-                var lastModifyAfter = context.ParseResult.GetValueForOption(lastModifyAfterOption);
-                var lastModifyBefore = context.ParseResult.GetValueForOption(lastModifyBeforeOption);
-                var createAfter = context.ParseResult.GetValueForOption(createAfterOption);
-                var createBefore = context.ParseResult.GetValueForOption(createBeforeOption);
-                var ignoreError = context.ParseResult.GetValueForOption(ignoreOption);
-                var verbose = context.ParseResult.GetValueForOption(verboseOption);
-                var noUserInteraction = context.ParseResult.GetValueForOption(noUserInteractionOption);
+                var output = context.GetValue(outputOption);
+                var includes = context.GetValue(includeOption);
+                var excludes = context.GetValue(excludeOption);
+                var delete = context.GetValue(deleteOption);
+                var dryRun = context.GetValue(dryRunOption);
+                var srcDir = context.GetValue(srcDirArg);
+                var destDir = context.GetValue(destDirArg);
+                var sizeOnly = context.GetValue(sizeOnlyOption);
+                var lastModifyAfter = context.GetValue(lastModifyAfterOption);
+                var lastModifyBefore = context.GetValue(lastModifyBeforeOption);
+                var createAfter = context.GetValue(createAfterOption);
+                var createBefore = context.GetValue(createBeforeOption);
+                var ignoreError = context.GetValue(ignoreOption);
+                var verbose = context.GetValue(verboseOption);
+                var noUserInteraction = context.GetValue(noUserInteractionOption);
 
                 if (string.IsNullOrEmpty(output))
                 {
@@ -344,8 +354,8 @@ public class MainService
                     NoUserInteractive = noUserInteraction
                 };
 
-                await using SyncHandler handler = new(option, context.GetCancellationToken());
-                context.ExitCode = await handler.HandleAsync();
+                await using SyncHandler handler = new(option, cancellationToken);
+                return await handler.HandleAsync();
             });
 
         return cmd;
@@ -353,11 +363,11 @@ public class MainService
 
     private Option<string> CreateOutputOption()
     {
-        Option<string> option = new(new[] { "-o", "--output" },
-            "The output directory for logs or any file generated during processing.")
+        Option<string> option = new("-o", "--output")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "The output directory for logs or any file generated during processing."
         };
 
         return option;
@@ -365,91 +375,101 @@ public class MainService
 
     private Option<string[]> CreateIncludeOption()
     {
-        return new Option<string[]>(new[] { "-i", "--include" }, "Glob patterns for included files.")
+        return new Option<string[]>("-i", "--include")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrMore
+            Required = false,
+            Arity = ArgumentArity.ZeroOrMore,
+            Description = "Glob patterns for included files."
         };
     }
 
     private Option<string[]> CreateExcludeOption()
     {
-        return new Option<string[]>(new[] { "-e", "--exclude" }, "Glob patterns for excluded files.")
+        return new Option<string[]>("-e", "--exclude")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Glob patterns for excluded files."
         };
     }
 
     private Option<DateTime> CreateLastModifyAfterOption()
     {
-        return new Option<DateTime>(new[] { "--last-modify-after" }, "Last modify time after filter. e.g., 2022-10-01T10:20:21")
+        return new Option<DateTime>("--last-modify-after")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Last modify time after filter. e.g., 2022-10-01T10:20:21"
         };
     }
 
     private Option<DateTime> CreateLastModifyBeforeOption()
     {
-        return new Option<DateTime>(new[] { "--last-modify-before" }, "Last modify time before fitler. e.g., 2022-08-02T16:20:21")
+        return new Option<DateTime>("--last-modify-before")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Last modify time before fitler. e.g., 2022-08-02T16:20:21"
         };
     }
 
     private Option<DateTime> CreateCreateAfterOption()
     {
-        return new Option<DateTime>(new[] { "--create-after" }, "Create time after filter. e.g., 2022-07-01T10:20:21")
+        return new Option<DateTime>("--create-after")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Create time after filter. e.g., 2022-07-01T10:20:21"
         };
     }
 
     private Option<DateTime> CreateCreateBeforeOption()
     {
-        return new Option<DateTime>(new[] { "--create-before" }, "Create time before fitler. e.g., 2022-12-02T16:20:21")
+        return new Option<DateTime>("--create-before")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Create time before fitler. e.g., 2022-12-02T16:20:21"
         };
     }
 
     private Option<bool> CreateIgnoreErrorOption()
     {
-        return new Option<bool>(new[] { "--ignore-error" }, "Ignore error during file processing.")
+        return new Option<bool>("--ignore-error")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Ignore errors during file processing."
         };
     }
 
     private Option<bool> CreateDryRunOption()
     {
-        return new(new[] { "-n", "--dry-run" }, "Perform a trial run with no changes made.")
+        return new("-n", "--dry-run")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Perform a trial run with no changes made."
         };
     }
 
     private Option<bool> CreateVerboseOption()
     {
-        return new(new[] { "-v", "--verbose" }, "Enable logging in detailed mode.")
+        return new("-v", "--verbose")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Enable logging in detailed mode."
         };
     }
 
     private Option<bool> CreateNoUserInteractionOption()
     {
-        return new(new[] { "--no-user-interaction" }, "Indicates running environment is not user interactive mode.")
+        return new("--no-user-interaction")
         {
-            IsRequired = false,
-            Arity = ArgumentArity.ZeroOrOne
+            Required = false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Indicates running environment is not user interactive mode."
         };
     }
 }

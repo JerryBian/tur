@@ -1,5 +1,9 @@
 Listed change logs for release history.
 
+## 5.5
+
+Critical fix
+
 ## 5.4
 
 Support .NET 9 and .NET 10

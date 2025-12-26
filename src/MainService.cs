@@ -19,7 +19,6 @@ public class MainService
     public async Task<int> RunAsync()
     {
         RootCommand rootCommand = new("Command line tool to manage files.");
-        rootCommand.Aliases.Add("tur");
 
         var dffCmd = CreateDffCommand();
         rootCommand.Subcommands.Add(dffCmd);

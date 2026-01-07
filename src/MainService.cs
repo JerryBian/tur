@@ -408,7 +408,7 @@ public class MainService
         {
             Required = false,
             Arity = ArgumentArity.ZeroOrOne,
-            Description = "Last modify time before fitler. e.g., 2022-08-02T16:20:21"
+            Description = "Last modify time before filter. e.g., 2022-08-02T16:20:21"
         };
     }
 
@@ -428,7 +428,7 @@ public class MainService
         {
             Required = false,
             Arity = ArgumentArity.ZeroOrOne,
-            Description = "Create time before fitler. e.g., 2022-12-02T16:20:21"
+            Description = "Create time before filter. e.g., 2022-12-02T16:20:21"
         };
     }
 

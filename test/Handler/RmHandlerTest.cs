@@ -223,6 +223,122 @@ public class RmHandlerTest : TestBase
         Assert.False(Directory.Exists(_dir));
     }
 
+    [Fact]
+    public async Task Test_Case_12()
+    {
+        // DryRun deletes nothing.
+        _option.Destination = _dir;
+        _option.DryRun = true;
+        _ = await MockFileAsync(_dir);
+        _ = MockSubDir(_dir, "test");
+        _ = await MockFileAsync(Path.Combine(_dir, "test"));
+
+        await using RmHandler handler = new(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(2, Directory.GetFiles(_dir, "*", SearchOption.AllDirectories).Length);
+        _ = Assert.Single(Directory.GetDirectories(_dir, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task Test_Case_13()
+    {
+        // Neither destination nor --from-file provided -> error exit code, nothing touched.
+        await using RmHandler handler = new(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+
+        Assert.Equal(1, exitCode);
+        Assert.True(Directory.Exists(_dir));
+    }
+
+    [Fact]
+    public async Task Test_Case_14()
+    {
+        // Last-modify filter limits which files are deleted.
+        _option.Destination = _dir;
+        _option.File = true;
+        var old = await MockFileAsync(_dir, fileName: "old.txt");
+        var fresh = await MockFileAsync(_dir, fileName: "fresh.txt");
+        File.SetLastWriteTime(old, DateTime.Now.AddDays(-2));
+        _option.LastModifyBefore = DateTime.Now.AddDays(-1);
+
+        await using RmHandler handler = new(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+
+        Assert.Equal(0, exitCode);
+        Assert.False(File.Exists(old));
+        Assert.True(File.Exists(fresh));
+    }
+
+    [Fact]
+    public async Task Test_Case_15()
+    {
+        // --trash moves items into the (test-overridden) trash root instead of deleting them.
+        _option.Destination = _dir;
+        _option.Trash = true;
+        _option.TrashRoot = Path.Combine(Path.GetTempPath(), GetRandomName());
+        _ = await MockFileAsync(_dir, fileName: "a.txt");
+        _ = MockSubDir(_dir, "sub");
+        _ = await MockFileAsync(Path.Combine(_dir, "sub"), fileName: "b.txt");
+
+        await using RmHandler handler = new(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+
+        Assert.Equal(0, exitCode);
+        Assert.False(Directory.Exists(_dir));
+        var trashed = Directory.GetFileSystemEntries(Path.Combine(_option.TrashRoot, "files"));
+        // Bottom-up order: b.txt is trashed on its own, then the emptied sub,
+        // then a.txt, then the swept destination root.
+        Assert.Equal(4, trashed.Length);
+        Assert.True(File.Exists(Path.Combine(_option.TrashRoot, "files", "b.txt")));
+        Assert.True(Directory.Exists(Path.Combine(_option.TrashRoot, "files", "sub")));
+        Directory.Delete(_option.TrashRoot, true);
+    }
+
+    [Fact]
+    public async Task Test_Case_17()
+    {
+        // --from-file alone (no destination) deletes the listed files and exits 0.
+        var victim = await MockFileAsync(_dir, fileName: "victim.txt");
+        var listFile = Path.Combine(Path.GetTempPath(), GetRandomName());
+        await File.WriteAllTextAsync(listFile, victim, new UTF8Encoding(false));
+        _option.FromFile = listFile;
+        _option.Excludes = new[] { "**" };
+
+        try
+        {
+            await using RmHandler handler = new(_option, CancellationToken.None);
+            var exitCode = await handler.HandleAsync();
+
+            Assert.Equal(0, exitCode);
+            Assert.False(File.Exists(victim));
+            Assert.True(Directory.Exists(_dir)); // untouched when no destination given
+        }
+        finally
+        {
+            File.Delete(listFile);
+        }
+    }
+
+    [Fact]
+    public async Task Test_Case_16()
+    {
+        // --trash with dry run moves nothing.
+        _option.Destination = _dir;
+        _option.Trash = true;
+        _option.DryRun = true;
+        _option.TrashRoot = Path.Combine(Path.GetTempPath(), GetRandomName());
+        _ = await MockFileAsync(_dir, fileName: "a.txt");
+
+        await using RmHandler handler = new(_option, CancellationToken.None);
+        var exitCode = await handler.HandleAsync();
+
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(Path.Combine(_dir, "a.txt")));
+        Assert.False(Directory.Exists(_option.TrashRoot));
+    }
+
     public override void Dispose()
     {
         if (Directory.Exists(_dir))

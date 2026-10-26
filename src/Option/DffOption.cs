@@ -7,4 +7,8 @@ public class DffOption : OptionBase
     }
 
     public string[] Dir { get; set; }
+
+    public string WriteList { get; set; }
+
+    public string Keep { get; set; }
 }

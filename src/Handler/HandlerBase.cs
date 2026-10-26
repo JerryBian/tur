@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -9,12 +10,21 @@ using Tur.Core;
 using Tur.Extension;
 using Tur.Logging;
 using Tur.Option;
+using Tur.Util;
 
 namespace Tur.Handler;
 
 public abstract class HandlerBase : IAsyncDisposable
 {
+    // Defaults applied automatically when the scan roots live on a network share
+    // (SMB/NFS). Latency-bound links need concurrency to hide round trips.
+    protected const int RemoteScanParallelism = 8;
+    protected const int RemoteCopyParallelism = 16;
+    protected const int RemoteHashParallelism = 8;
+
     private readonly OptionBase _option;
+    private readonly object _remoteLock = new();
+    private bool? _isRemote;
     protected readonly ITurLogger _logger;
     protected readonly CancellationToken CancellationToken;
 
@@ -50,7 +60,8 @@ public abstract class HandlerBase : IAsyncDisposable
         stopwatch.Stop();
 
         _logger.Log(string.Empty);
-        _logger.Log($"All done. Elapsed: [{stopwatch.Elapsed.Human()}]", prefix: Constants.ArrowUnicode, prefixSurroundWithBrackets: false);
+        var status = exitCode == 0 ? "All done." : "Completed with errors.";
+        _logger.Log($"{status} Elapsed: [{stopwatch.Elapsed.Human()}]", prefix: Constants.ArrowUnicode, prefixSurroundWithBrackets: false);
         PostCheck();
         return exitCode;
     }
@@ -86,6 +97,27 @@ public abstract class HandlerBase : IAsyncDisposable
         return true;
     }
 
+    protected void LogSkipped(string path, Exception ex)
+    {
+        _logger.Log(path, TurLogLevel.Warning, Constants.XUnicode, suffix: "SKIPPED", error: ex);
+    }
+
+    /// <summary>The directories this handler will enumerate; used for remote detection.</summary>
+    protected virtual IEnumerable<string> GetScanRoots()
+    {
+        yield break;
+    }
+
+    /// <summary>True when any scan root lives on a network share. Computed once.</summary>
+    protected bool IsRemoteEnvironment()
+    {
+        lock (_remoteLock)
+        {
+            _isRemote ??= PathUtil.AnyRemote(GetScanRoots());
+            return _isRemote.Value;
+        }
+    }
+
     protected TurBuildOptions CreateBuildOptions()
     {
         var buildOptions = new TurBuildOptions();
@@ -117,6 +149,28 @@ public abstract class HandlerBase : IAsyncDisposable
         if (_option.LastModifyAfter != default)
         {
             buildOptions.LastModifyAfter = _option.LastModifyAfter;
+        }
+
+        // Time filters can only be applied when file attributes are read during enumeration.
+        if (_option.CreateBefore != default || _option.CreateAfter != default
+            || _option.LastModifyBefore != default || _option.LastModifyAfter != default)
+        {
+            buildOptions.IncludeAttributes = true;
+        }
+
+        buildOptions.FollowLinks = _option.FollowLinks;
+        buildOptions.MaxDepth = _option.MaxDepth;
+        buildOptions.ScanParallelism = _option.Threads ?? (IsRemoteEnvironment() ? RemoteScanParallelism : 1);
+        if (_option.MinSize.HasValue)
+        {
+            buildOptions.MinFileSize = _option.MinSize;
+            buildOptions.IncludeFileSize = true;
+        }
+
+        if (_option.MaxSize.HasValue)
+        {
+            buildOptions.MaxFileSize = _option.MaxSize;
+            buildOptions.IncludeFileSize = true;
         }
 
         buildOptions.IgnoreError = _option.IgnoreError;

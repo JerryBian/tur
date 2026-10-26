@@ -15,4 +15,11 @@ public class SyncOption : OptionBase
     public string DestDir { get; set; }
 
     public bool SizeOnly { get; set; }
+
+    public string ExcludeFrom { get; set; }
+
+    public bool DeleteExcluded { get; set; }
+
+    // Copy throughput limit in bytes per second; 0 means unlimited.
+    public long BwLimit { get; set; }
 }

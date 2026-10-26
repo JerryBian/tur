@@ -35,4 +35,18 @@ public abstract class OptionBase
     public bool NoUserInteractive { get; set; }
 
     public bool Verbose { get; set; }
+
+    public long? MinSize { get; set; }
+
+    public long? MaxSize { get; set; }
+
+    public int? MaxDepth { get; set; }
+
+    public int? Threads { get; set; }
+
+    public bool Json { get; set; }
+
+    public bool Progress { get; set; }
+
+    public bool FollowLinks { get; set; }
 }

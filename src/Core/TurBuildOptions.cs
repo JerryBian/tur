@@ -15,6 +15,18 @@ namespace Tur.Core
 
         public bool IncludeAttributes { get; set; }
 
+        public bool FollowLinks { get; set; }
+
+        // Number of concurrent directory scans. 1 (default) keeps the historical
+        // sequential walk; higher values hide per-directory latency on network shares.
+        public int ScanParallelism { get; set; } = 1;
+
+        public long? MinFileSize { get; set; }
+
+        public long? MaxFileSize { get; set; }
+
+        public int? MaxDepth { get; set; }
+
         public DateTime? LastModifyAfter { get; set; }
 
         public DateTime? LastModifyBefore { get; set; }

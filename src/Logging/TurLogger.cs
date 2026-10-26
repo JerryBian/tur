@@ -15,7 +15,9 @@ namespace Tur.Logging
 
         public TurLogger(OptionBase options, CancellationToken cancellationToken)
         {
-            _consoleAppender = new ConsoleAppender(!options.NoUserInteractive, options.Verbose);
+            _consoleAppender = options.Json
+                ? new JsonAppender(options.Verbose)
+                : new ConsoleAppender(!options.NoUserInteractive, options.Verbose);
             _fileLogPath = Path.Combine(options.OutputDir, $"tur-{options.CmdName}-{Path.GetRandomFileName().Replace(".", string.Empty)}.log");
             _fileAppender = new FileAppender(_fileLogPath);
             _cancellationToken = cancellationToken;

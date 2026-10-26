@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 using Tur.Core;
 using Tur.Logging;
 using Tur.Option;
+using Tur.Util;
 
 namespace Tur.Handler;
 
@@ -14,10 +16,19 @@ public class RmHandler : HandlerBase
     private readonly RmOption _option;
     private int _deletedFiles;
     private int _deletedDirectories;
+    private bool _hasError;
 
     public RmHandler(RmOption option, CancellationToken cancellationToken) : base(option, cancellationToken)
     {
         _option = option;
+    }
+
+    protected override IEnumerable<string> GetScanRoots()
+    {
+        if (!string.IsNullOrEmpty(_option.Destination))
+        {
+            yield return _option.Destination;
+        }
     }
 
     private async Task DeleteFromFileListAsync()
@@ -40,9 +51,9 @@ public class RmHandler : HandlerBase
                     }
                     else
                     {
-                        File.Delete(fullPath);
+                        DeleteFileCore(fullPath);
                         _ = Interlocked.Increment(ref _deletedFiles);
-                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "F");
+                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: _option.Trash ? "F, TRASH" : "F");
                     }
                 }
                 else if (Directory.Exists(fullPath))
@@ -53,9 +64,9 @@ public class RmHandler : HandlerBase
                     }
                     else
                     {
-                        Directory.Delete(fullPath, true);
+                        DeleteDirectoryCore(fullPath, true);
                         _ = Interlocked.Increment(ref _deletedDirectories);
-                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
+                        _logger.Log($"{fullPath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: _option.Trash ? "D, TRASH" : "D");
                     }
                 }
                 else
@@ -72,6 +83,7 @@ public class RmHandler : HandlerBase
                 else
                 {
                     _logger.Log(fullPath, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                    _hasError = true;
                     break;
                 }
             }
@@ -83,7 +95,7 @@ public class RmHandler : HandlerBase
         var buildOption = CreateBuildOptions();
         buildOption.IncludeFiles = true;
         buildOption.IncludeDirectories = _option.Dir || _option.EmptyDir;
-        var builder = new TurSystemBuilder(_option.Destination, buildOption, CancellationToken);
+        var builder = new TurSystemBuilder(_option.Destination, buildOption, CancellationToken, LogSkipped);
         foreach (var item in builder.Build())
         {
             if (CancellationToken.IsCancellationRequested)
@@ -103,9 +115,9 @@ public class RmHandler : HandlerBase
                         }
                         else
                         {
-                            Directory.Delete(item.FullPath, true);
+                            DeleteDirectoryCore(item.FullPath, true);
                             _ = Interlocked.Increment(ref _deletedDirectories);
-                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: _option.Trash ? "D, TRASH" : "D");
                         }
                     }
                 }
@@ -119,9 +131,9 @@ public class RmHandler : HandlerBase
                         }
                         else
                         {
-                            File.Delete(item.FullPath);
+                            DeleteFileCore(item.FullPath);
                             _ = Interlocked.Increment(ref _deletedFiles);
-                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "F");
+                            _logger.Log($"{item.RelativePath}", Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: _option.Trash ? "F, TRASH" : "F");
                         }
                     }
                 }
@@ -135,6 +147,7 @@ public class RmHandler : HandlerBase
                 else
                 {
                     _logger.Log(item.RelativePath, TurLogLevel.Error, Constants.XUnicode, error: ex);
+                    _hasError = true;
                     break;
                 }
             }
@@ -142,15 +155,83 @@ public class RmHandler : HandlerBase
 
         if (!Directory.EnumerateFileSystemEntries(_option.Destination, "*", SearchOption.TopDirectoryOnly).Any())
         {
-            Directory.Delete(_option.Destination);
-            _logger.Log(_option.Destination, Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: "D");
+            DeleteDirectoryCore(_option.Destination, false);
+            _logger.Log(_option.Destination, Logging.TurLogLevel.Information, Constants.CheckUnicode, suffix: _option.Trash ? "D, TRASH" : "D");
         }
+    }
+
+    private void DeleteFileCore(string fullPath)
+    {
+        if (_option.Trash)
+        {
+            RecycleBin.MoveToTrash(fullPath, _option.TrashRoot);
+        }
+        else
+        {
+            File.Delete(fullPath);
+        }
+    }
+
+    private void DeleteDirectoryCore(string fullPath, bool recursive)
+    {
+        if (_option.Trash)
+        {
+            RecycleBin.MoveToTrash(fullPath, _option.TrashRoot);
+        }
+        else
+        {
+            Directory.Delete(fullPath, recursive);
+        }
+    }
+
+    private bool ConfirmDeletion()
+    {
+        if (_option.DryRun || _option.Yes || _option.NoUserInteractive)
+        {
+            return true;
+        }
+
+        // Never block non-interactive callers: prompt only on a real terminal.
+        if (Console.IsInputRedirected || Console.IsOutputRedirected)
+        {
+            return true;
+        }
+
+        List<string> targets = new();
+        if (!string.IsNullOrEmpty(_option.FromFile))
+        {
+            targets.Add($"items listed in {_option.FromFile}");
+        }
+
+        if (!string.IsNullOrEmpty(_option.Destination))
+        {
+            targets.Add(_option.Destination);
+        }
+
+        var mode = _option.Trash ? "move to trash" : "PERMANENTLY delete";
+        _logger.Log($"About to {mode}: {string.Join(" and ", targets)}", TurLogLevel.Warning, Constants.XUnicode, false);
+        Console.Write("Continue? [y/N] ");
+        var answer = Console.ReadLine();
+        if (answer != null && (answer.Trim().Equals("y", StringComparison.OrdinalIgnoreCase)
+                               || answer.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        _logger.Log("Aborted by user.", TurLogLevel.Warning, Constants.ArrowUnicode, false);
+        return false;
     }
 
     protected override void PostCheck()
     {
         base.PostCheck();
-        _logger.Log($"{_deletedFiles} files and {_deletedDirectories} directories deleted.", TurLogLevel.Information, Constants.ArrowUnicode, false);
+        var summary = $"{_deletedFiles} files and {_deletedDirectories} directories deleted.";
+        if (_option.DryRun)
+        {
+            summary += " (dry run)";
+        }
+
+        _logger.Log(summary, TurLogLevel.Information, Constants.ArrowUnicode, false);
     }
 
     protected override bool PreCheck()
@@ -186,6 +267,11 @@ public class RmHandler : HandlerBase
             }
         }
 
+        if (!ConfirmDeletion())
+        {
+            return false;
+        }
+
         return base.PreCheck();
     }
 
@@ -196,8 +282,11 @@ public class RmHandler : HandlerBase
             await DeleteFromFileListAsync();
         }
 
-        DeleteFromFilter();
+        if (!string.IsNullOrEmpty(_option.Destination))
+        {
+            DeleteFromFilter();
+        }
 
-        return 0;
+        return _hasError ? 1 : 0;
     }
 }

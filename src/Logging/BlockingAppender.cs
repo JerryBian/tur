@@ -50,7 +50,7 @@ namespace Tur.Logging
 
         protected abstract void Handle(TurLogItem item);
 
-        public async ValueTask DisposeAsync()
+        public virtual async ValueTask DisposeAsync()
         {
             _items.CompleteAdding();
             try
